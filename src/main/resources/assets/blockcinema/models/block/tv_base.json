@@ -1,0 +1,8 @@
+{
+  "parent": "minecraft:block/orientable",
+  "textures": {
+    "front": "blockcinema:block/tv_screen",
+    "side": "blockcinema:block/tv_body",
+    "top": "blockcinema:block/tv_body"
+  }
+}

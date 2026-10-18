@@ -1,3 +1,10 @@
 {
-  "block.blockcinema.tv": "TV"
+  "block.blockcinema.tv": "TV",
+  "message.blockcinema.tv_shape": "These TVs aren't one screen: make a filled rectangle, up to %sx%s",
+  "screen.blockcinema.tv": "TV",
+  "screen.blockcinema.not_available": "%s isn't available yet",
+  "service.blockcinema.youtube": "YouTube",
+  "service.blockcinema.twitch": "Twitch",
+  "service.blockcinema.jellyfin": "Jellyfin",
+  "service.blockcinema.direct_link": "Video link"
 }

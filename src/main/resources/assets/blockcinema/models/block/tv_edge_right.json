@@ -1,0 +1,31 @@
+{
+  "textures": {
+    "edge": "blockcinema:block/tv_front",
+    "particle": "blockcinema:block/tv_body"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        -0.01
+      ],
+      "to": [
+        1,
+        16,
+        0
+      ],
+      "faces": {
+        "north": {
+          "uv": [
+            15,
+            0,
+            16,
+            16
+          ],
+          "texture": "#edge"
+        }
+      }
+    }
+  ]
+}
