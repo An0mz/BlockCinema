@@ -66,20 +66,6 @@
       }, 1000);
       player.setVolume(volume);
     });
-    // Player events and playback state go to the browser log (run/debug.log), to find why live playback stalls.
-    ['READY', 'PLAY', 'PLAYING', 'PAUSE', 'ENDED', 'ONLINE', 'OFFLINE', 'PLAYBACK_BLOCKED'].forEach(function (name) {
-      player.addEventListener(Twitch.Player[name], function () {
-        console.log('[blockcinema] twitch event ' + name);
-      });
-    });
-    setInterval(function () {
-      try {
-        console.log('[blockcinema] twitch t=' + player.getCurrentTime().toFixed(1) + ' paused=' + player.isPaused()
-            + ' stats=' + JSON.stringify(player.getPlaybackStats()));
-      } catch (e) {
-        console.log('[blockcinema] twitch state unavailable: ' + e);
-      }
-    }, 5000);
   }
 </script>
 </body>
