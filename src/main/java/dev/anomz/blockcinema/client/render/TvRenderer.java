@@ -29,7 +29,14 @@ import net.minecraft.world.phys.Vec3;
 public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
     /** Frame around the whole screen, matching the bezel in the TV texture. */
     private static final float BEZEL = 1 / 16f;
-    private static final float FRONT = -0.5f - 0.002f;
+    /**
+     * How far the picture floats in front of the TV face, in blocks per block of distance to the camera.
+     * Depth precision drops with distance, so a fixed gap lets the dark face show through far away
+     * (z-fighting); growing the gap with distance keeps it too small to notice at any range.
+     */
+    private static final float GAP_PER_DISTANCE = 0.0006f;
+    private static final float MIN_GAP = 0.002f;
+    private static final float MAX_GAP = 0.06f;
 
     public TvRenderer(BlockEntityRendererProvider.Context context) {
     }
@@ -46,9 +53,14 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
             return;
         }
         Direction facing = state.getValue(HorizontalDirectionalBlock.FACING);
-        if (inFront(tv, facing)) {
+        Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        if (inFront(tv, facing, camera)) {
             TvPlayers.markSeen(layout.origin());
         }
+        // The same gap for every TV of the screen (measured to its origin), so the picture stays flat.
+        float gap = Math.clamp((float) Math.sqrt(layout.origin().distToCenterSqr(camera)) * GAP_PER_DISTANCE,
+                MIN_GAP, MAX_GAP);
+        float front = -0.5f - gap;
 
         // Picture rectangle in screen coordinates (blocks; x from the viewer's left, y up), letterboxed.
         float areaW = layout.cols() - 2 * BEZEL;
@@ -84,21 +96,20 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         float right = 0.5f - (x1 - layout.col());
         float top = y1 - layout.row() - 0.5f;
         float bottom = y0 - layout.row() - 0.5f;
-        vertex(consumer, pose, left, top, u0, vTop);
-        vertex(consumer, pose, left, bottom, u0, vBottom);
-        vertex(consumer, pose, right, bottom, u1, vBottom);
-        vertex(consumer, pose, right, top, u1, vTop);
+        vertex(consumer, pose, left, top, front, u0, vTop);
+        vertex(consumer, pose, left, bottom, front, u0, vBottom);
+        vertex(consumer, pose, right, bottom, front, u1, vBottom);
+        vertex(consumer, pose, right, top, front, u1, vTop);
         poseStack.popPose();
     }
 
     /** Whether the camera is on the screen side of this TV's front face. */
-    private static boolean inFront(TvBlockEntity tv, Direction facing) {
-        Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+    private static boolean inFront(TvBlockEntity tv, Direction facing, Vec3 camera) {
         Vec3 toCamera = camera.subtract(Vec3.atCenterOf(tv.getBlockPos()));
         return toCamera.x * facing.getStepX() + toCamera.z * facing.getStepZ() > 0.5;
     }
 
-    private static void vertex(VertexConsumer consumer, Matrix4f pose, float x, float y, float u, float v) {
-        consumer.addVertex(pose, x, y, FRONT).setColor(255, 255, 255, 255).setUv(u, v).setLight(LightTexture.FULL_BRIGHT);
+    private static void vertex(VertexConsumer consumer, Matrix4f pose, float x, float y, float z, float u, float v) {
+        consumer.addVertex(pose, x, y, z).setColor(255, 255, 255, 255).setUv(u, v).setLight(LightTexture.FULL_BRIGHT);
     }
 }
