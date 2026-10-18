@@ -33,6 +33,8 @@ public final class BlockCinema {
     private static void onBuildCreativeTabs(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(BlockCinemaRegistries.TV_ITEM);
+        } else if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
+            event.accept(BlockCinemaRegistries.REMOTE);
         }
     }
 

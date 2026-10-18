@@ -9,6 +9,7 @@ TVs only show these services through their official players. There is no address
 ## Features
 
 - **TV** block: right-click it to pick what to watch. TVs facing the same way in a filled rectangle (up to 16 wide and 9 tall) join into one seamless screen; the picture is always 16:9.
+- **TV Remote**: sneak + right-click a TV to link it, then right-click anywhere within 48 blocks to open its menu.
 - **YouTube**: paste a video or playlist link. It plays in YouTube's official embedded player.
 - **Twitch**: type a channel name or paste its link. It plays in Twitch's official embedded player.
 - **Jellyfin**: log in to your own Jellyfin server with Quick Connect (approve a code in your Jellyfin app; no password is typed into Minecraft), browse your libraries and play. Videos resume where you left them, in any Jellyfin app.
@@ -31,7 +32,7 @@ TVs only show these services through their official players. There is no address
 ## Getting started
 
 1. Craft a few TVs and place them facing you, side by side for a big screen.
-2. Right-click a TV with an empty hand and pick YouTube, Twitch, Jellyfin or Video link.
+2. Right-click a TV with an empty hand (or a remote) and pick YouTube, Twitch, Jellyfin or Video link.
 3. Right-click the TV again for the controls, or to switch to something else.
 
 ### Recipe
@@ -39,6 +40,7 @@ TVs only show these services through their official players. There is no address
 | Item | Recipe |
 |---|---|
 | TV (x2) | `IGI / GRG / III` (iron ingot, black stained glass pane, redstone) |
+| TV Remote | Shapeless: iron ingot + redstone + any button + black dye |
 
 ## Server settings
 

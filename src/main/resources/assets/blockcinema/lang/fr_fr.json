@@ -1,5 +1,12 @@
 {
   "block.blockcinema.tv": "Téléviseur",
+  "item.blockcinema.remote": "Télécommande",
+  "item.blockcinema.remote.unlinked": "Accroupi + clic droit sur une télé pour associer cette télécommande",
+  "item.blockcinema.remote.linked": "Associée à la télé en %s, %s, %s",
+  "message.blockcinema.remote_linked": "Télécommande associée à la télé en %s, %s, %s",
+  "message.blockcinema.remote_unlinked": "Accroupi + clic droit sur une télé pour associer cette télécommande",
+  "message.blockcinema.remote_too_far": "La télé associée est trop loin",
+  "message.blockcinema.remote_lost": "La télé associée n'existe plus",
   "message.blockcinema.tv_shape": "Ces télés ne forment pas un écran : faites un rectangle plein, jusqu'à %sx%s",
   "screen.blockcinema.tv": "Télé",
   "screen.blockcinema.service_disabled": "Désactivé sur ce serveur",

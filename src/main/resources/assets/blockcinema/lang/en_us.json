@@ -1,5 +1,12 @@
 {
   "block.blockcinema.tv": "TV",
+  "item.blockcinema.remote": "TV Remote",
+  "item.blockcinema.remote.unlinked": "Sneak + right-click a TV to link this remote",
+  "item.blockcinema.remote.linked": "Linked to the TV at %s, %s, %s",
+  "message.blockcinema.remote_linked": "Remote linked to the TV at %s, %s, %s",
+  "message.blockcinema.remote_unlinked": "Sneak + right-click a TV to link this remote",
+  "message.blockcinema.remote_too_far": "The linked TV is too far away",
+  "message.blockcinema.remote_lost": "The linked TV is gone",
   "message.blockcinema.tv_shape": "These TVs aren't one screen: make a filled rectangle, up to %sx%s",
   "screen.blockcinema.tv": "TV",
   "screen.blockcinema.service_disabled": "Turned off on this server",
