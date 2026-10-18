@@ -1,5 +1,6 @@
 {
   "block.blockcinema.tv": "Téléviseur",
+  "block.blockcinema.diagonal_tv": "Téléviseur diagonal",
   "item.blockcinema.remote": "Télécommande",
   "item.blockcinema.remote.unlinked": "Accroupi + clic droit sur une télé pour associer cette télécommande",
   "item.blockcinema.remote.linked": "Associée à la télé en %s, %s, %s",
@@ -31,6 +32,7 @@
   "screen.blockcinema.turn_off": "Éteindre",
   "screen.blockcinema.play_pause": "Lecture / Pause",
   "screen.blockcinema.fullscreen": "Plein écran",
+  "screen.blockcinema.rotate": "Tourner l'image",
   "screen.blockcinema.volume": "Volume de la télé : %s %%",
   "screen.blockcinema.fullscreen_help": "%sEspace : lecture/pause   Gauche/Droite : -10 s/+10 s   Haut/Bas : volume (%s %%)   Échap : retour",
   "screen.blockcinema.time_unknown": "--:-- / --:--",

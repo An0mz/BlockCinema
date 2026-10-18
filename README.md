@@ -9,6 +9,8 @@ TVs only show these services through their official players. There is no address
 ## Features
 
 - **TV** block: right-click it to pick what to watch. TVs facing the same way in a filled rectangle (up to 16 wide and 9 tall) join into one seamless screen; the picture is always 16:9.
+- Screens on walls, **floors** and **ceilings**: look steeply down or up while placing a TV. The top of the picture points the way you face, and new floor or ceiling TVs line up with the ones next to them. The rotate button in the TV menu turns the picture a quarter turn.
+- **Diagonal TV**: a thin screen across the block at 45°. Diagonal TVs in a `\` or `/` line (and stacked up) join into one screen too.
 - **TV Remote**: sneak + right-click a TV to link it, then right-click anywhere within 48 blocks to open its menu.
 - **YouTube**: paste a video or playlist link. It plays in YouTube's official embedded player.
 - **Twitch**: type a channel name or paste its link. It plays in Twitch's official embedded player.
@@ -41,6 +43,7 @@ TVs only show these services through their official players. There is no address
 |---|---|
 | TV (x2) | `IGI / GRG / III` (iron ingot, black stained glass pane, redstone) |
 | TV Remote | Shapeless: iron ingot + redstone + any button + black dye |
+| Diagonal TV | A TV on its own (and a Diagonal TV on its own back to a TV) |
 
 ## Server settings
 

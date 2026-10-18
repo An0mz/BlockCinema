@@ -1,0 +1,88 @@
+{
+  "textures": {
+    "screen": "blockcinema:block/tv_screen",
+    "body": "blockcinema:block/tv_body",
+    "edge": "blockcinema:block/tv_front",
+    "particle": "blockcinema:block/tv_body"
+  },
+  "elements": [
+    {
+      "from": [
+        0,
+        0,
+        7.5
+      ],
+      "to": [
+        16,
+        16,
+        8.5
+      ],
+      "rotation": {
+        "origin": [
+          8,
+          8,
+          8
+        ],
+        "axis": "y",
+        "angle": -45,
+        "rescale": true
+      },
+      "faces": {
+        "north": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#screen"
+        },
+        "south": {
+          "uv": [
+            0,
+            0,
+            16,
+            16
+          ],
+          "texture": "#body"
+        },
+        "east": {
+          "uv": [
+            7.5,
+            0,
+            8.5,
+            16
+          ],
+          "texture": "#body"
+        },
+        "west": {
+          "uv": [
+            7.5,
+            0,
+            8.5,
+            16
+          ],
+          "texture": "#body"
+        },
+        "up": {
+          "uv": [
+            0,
+            7.5,
+            16,
+            8.5
+          ],
+          "texture": "#body"
+        },
+        "down": {
+          "uv": [
+            0,
+            7.5,
+            16,
+            8.5
+          ],
+          "texture": "#body"
+        }
+      }
+    }
+  ]
+}

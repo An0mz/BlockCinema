@@ -6,6 +6,7 @@ import com.mojang.logging.LogUtils;
 
 import dev.anomz.blockcinema.network.ChangeTvPayload;
 import dev.anomz.blockcinema.network.ControlTvPayload;
+import dev.anomz.blockcinema.network.RotateTvPayload;
 import dev.anomz.blockcinema.network.TvRequests;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.bus.api.IEventBus;
@@ -33,6 +34,7 @@ public final class BlockCinema {
     private static void onBuildCreativeTabs(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
             event.accept(BlockCinemaRegistries.TV_ITEM);
+            event.accept(BlockCinemaRegistries.DIAGONAL_TV_ITEM);
         } else if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
             event.accept(BlockCinemaRegistries.REMOTE);
         }
@@ -41,7 +43,8 @@ public final class BlockCinema {
     private static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
         event.registrar("1")
                 .playToServer(ChangeTvPayload.TYPE, ChangeTvPayload.STREAM_CODEC, ChangeTvPayload::handle)
-                .playToServer(ControlTvPayload.TYPE, ControlTvPayload.STREAM_CODEC, ControlTvPayload::handle);
+                .playToServer(ControlTvPayload.TYPE, ControlTvPayload.STREAM_CODEC, ControlTvPayload::handle)
+                .playToServer(RotateTvPayload.TYPE, RotateTvPayload.STREAM_CODEC, RotateTvPayload::handle);
     }
 
     private static void onLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {

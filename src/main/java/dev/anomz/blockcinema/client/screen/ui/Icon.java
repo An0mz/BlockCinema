@@ -20,5 +20,6 @@ public enum Icon {
     ARROW_BACK,
     FOLDER,
     FILM,
-    MUTE
+    MUTE,
+    ROTATE
 }

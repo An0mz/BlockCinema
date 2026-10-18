@@ -28,6 +28,7 @@ public final class Ui {
     private static final ResourceLocation ICONS = ResourceLocation.fromNamespaceAndPath(BlockCinema.MODID, "textures/gui/icons.png");
     private static final int ICON_SOURCE = 32;
     private static final int ATLAS_COLUMNS = 8;
+    private static final int ATLAS_ROWS = 3;
 
     private Ui() {
     }
@@ -64,7 +65,7 @@ public final class Ui {
         RenderSystem.defaultBlendFunc();
         g.setColor((color >> 16 & 255) / 255f, (color >> 8 & 255) / 255f, (color & 255) / 255f, (color >>> 24) / 255f);
         g.blit(ICONS, x, y, size, size, index % ATLAS_COLUMNS * ICON_SOURCE, index / ATLAS_COLUMNS * ICON_SOURCE,
-                ICON_SOURCE, ICON_SOURCE, ATLAS_COLUMNS * ICON_SOURCE, 2 * ICON_SOURCE);
+                ICON_SOURCE, ICON_SOURCE, ATLAS_COLUMNS * ICON_SOURCE, ATLAS_ROWS * ICON_SOURCE);
         g.setColor(1, 1, 1, 1);
         RenderSystem.disableBlend();
     }

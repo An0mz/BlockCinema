@@ -4,6 +4,9 @@ import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.TvServerConfig;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
+import dev.anomz.blockcinema.block.TvBlock;
+import dev.anomz.blockcinema.block.TvBlockEntity;
+import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.client.browser.VideoLinks;
@@ -16,7 +19,10 @@ import dev.anomz.blockcinema.client.screen.ui.Ui;
 import dev.anomz.blockcinema.client.screen.ui.UiSlider;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 
 /**
  * The TV's menu: what's on with media controls, and one card per service. Nothing else: there is no
@@ -29,7 +35,8 @@ public final class TvScreen extends PanelScreen {
     private static final int GAP = 8;
     private static final int SKIP_SECONDS = 10;
 
-    private final BlockPos screen;
+    /** The screen's origin; it moves when a floor or ceiling screen is turned. */
+    private BlockPos screen;
     private TimeBar timeBar;
     private VolumeSlider volume;
     private boolean builtOn;
@@ -66,6 +73,11 @@ public final class TvScreen extends PanelScreen {
         builtOn = source != null;
         subtitle = source == null ? Component.translatable(key("off"))
                 : Component.translatable(key("now_playing"), Component.translatable(source.service().translationKey()), source.ownerName());
+        if (lyingFlat()) {
+            int iconSize = 18;
+            addRenderableWidget(new IconButton(panelX + panelW - Ui.PAD - iconSize + 4 - iconSize - 4, panelY + (Ui.HEADER - iconSize) / 2,
+                    iconSize, Icon.ROTATE, Component.translatable(key("rotate")), IconButton.Style.GHOST, () -> TvRemote.rotate(screen)));
+        }
         int x = contentLeft();
         int w = contentWidth();
         int y = contentTop();
@@ -125,6 +137,13 @@ public final class TvScreen extends PanelScreen {
                 }));
     }
 
+    /** Whether this is a floor or ceiling screen, whose picture can be turned. */
+    private boolean lyingFlat() {
+        BlockState state = minecraft.level == null ? null : minecraft.level.getBlockState(screen);
+        return state != null && state.getBlock() instanceof TvBlock
+                && state.getValue(BlockStateProperties.ORIENTATION).front().getAxis() == Direction.Axis.Y;
+    }
+
     private boolean paused() {
         TvSource source = TvRemote.source(screen);
         return source == null || source.paused();
@@ -143,6 +162,15 @@ public final class TvScreen extends PanelScreen {
 
     @Override
     public void tick() {
+        // Turned: the screen's origin is another corner now.
+        if (minecraft.level != null && minecraft.level.getBlockEntity(screen) instanceof TvBlockEntity tv) {
+            TvLayout layout = tv.layout(minecraft.level.getGameTime());
+            if (!layout.invalid() && !layout.origin().equals(screen)) {
+                screen = layout.origin();
+                rebuildWidgets();
+                return;
+            }
+        }
         // Turned on or off meanwhile (maybe by another player): the controls come or go.
         if ((TvRemote.source(screen) != null) != builtOn) {
             rebuildWidgets();

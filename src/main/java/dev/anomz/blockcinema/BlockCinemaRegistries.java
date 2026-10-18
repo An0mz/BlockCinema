@@ -1,5 +1,6 @@
 package dev.anomz.blockcinema;
 
+import dev.anomz.blockcinema.block.DiagonalTvBlock;
 import dev.anomz.blockcinema.block.TvBlock;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.item.RemoteItem;
@@ -29,12 +30,15 @@ public final class BlockCinemaRegistries {
     public static final DeferredBlock<TvBlock> TV = BLOCKS.register("tv", () -> new TvBlock(
             BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLACK).strength(1.0f).sound(SoundType.METAL)));
     public static final DeferredItem<BlockItem> TV_ITEM = ITEMS.registerSimpleBlockItem("tv", TV);
+    public static final DeferredBlock<DiagonalTvBlock> DIAGONAL_TV = BLOCKS.register("diagonal_tv", () -> new DiagonalTvBlock(
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLACK).strength(1.0f).sound(SoundType.METAL).noOcclusion()));
+    public static final DeferredItem<BlockItem> DIAGONAL_TV_ITEM = ITEMS.registerSimpleBlockItem("diagonal_tv", DIAGONAL_TV);
     public static final DeferredItem<RemoteItem> REMOTE = ITEMS.register("remote",
             () -> new RemoteItem(new Item.Properties().stacksTo(1)));
 
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TvBlockEntity>> TV_BLOCK_ENTITY =
             BLOCK_ENTITY_TYPES.register("tv",
-                    () -> BlockEntityType.Builder.of(TvBlockEntity::new, TV.get()).build(null));
+                    () -> BlockEntityType.Builder.of(TvBlockEntity::new, TV.get(), DIAGONAL_TV.get()).build(null));
 
     /** The TV a remote opens. */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<GlobalPos>> REMOTE_LINK =

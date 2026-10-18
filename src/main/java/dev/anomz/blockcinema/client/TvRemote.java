@@ -9,6 +9,7 @@ import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.network.ChangeTvPayload;
 import dev.anomz.blockcinema.network.ControlTvPayload;
+import dev.anomz.blockcinema.network.RotateTvPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -63,6 +64,11 @@ public final class TvRemote {
         } else if (source != null && minecraft.level != null) {
             seek(origin, source.position(minecraft.level.getGameTime()) + seconds);
         }
+    }
+
+    /** Turns a floor or ceiling screen's picture a quarter turn (see {@link RotateTvPayload}). */
+    public static void rotate(BlockPos origin) {
+        PacketDistributor.sendToServer(new RotateTvPayload(origin));
     }
 
     public static void turnOff(BlockPos origin) {

@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "blockcinema:tv"
+    }
+  ],
+  "result": {
+    "id": "blockcinema:diagonal_tv",
+    "count": 1
+  }
+}

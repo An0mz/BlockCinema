@@ -341,7 +341,7 @@ public final class TvPlayers {
     }
 
     private static double distance(TvLayout layout, Vec3 ear) {
-        BlockPos far = layout.origin().relative(layout.right(), layout.cols() - 1).above(layout.rows() - 1);
+        BlockPos far = layout.cell(layout.cols() - 1, layout.rows() - 1);
         AABB box = new AABB(Vec3.atLowerCornerOf(layout.origin()), Vec3.atLowerCornerOf(far).add(1, 1, 1));
         return TvVolume.distanceToBox(ear.x, ear.y, ear.z, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
     }

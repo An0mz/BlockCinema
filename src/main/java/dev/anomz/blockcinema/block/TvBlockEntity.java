@@ -17,7 +17,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -45,7 +44,7 @@ public class TvBlockEntity extends BlockEntity {
     /** This TV's screen layout, re-checked twice a second so placing or breaking TVs updates it. */
     public TvLayout layout(long gameTime) {
         if (layout == null || gameTime - layoutCheckedAt >= LAYOUT_CHECK_INTERVAL || gameTime < layoutCheckedAt) {
-            layout = TvLayout.of(level, worldPosition, getBlockState().getValue(HorizontalDirectionalBlock.FACING));
+            layout = TvLayout.of(level, worldPosition, getBlockState());
             layoutCheckedAt = gameTime;
         }
         return layout;

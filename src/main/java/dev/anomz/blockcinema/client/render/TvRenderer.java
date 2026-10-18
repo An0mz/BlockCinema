@@ -10,6 +10,7 @@ import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
+import dev.anomz.blockcinema.block.ScreenFrame;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
@@ -21,11 +22,8 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
-import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.level.block.HorizontalDirectionalBlock;
-import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
 
 /**
@@ -51,37 +49,40 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
     @Override
     public void render(TvBlockEntity tv, float partialTick, PoseStack poseStack, MultiBufferSource buffers,
             int packedLight, int packedOverlay) {
-        BlockState state = tv.getBlockState();
-        if (tv.getLevel() == null || !state.hasProperty(HorizontalDirectionalBlock.FACING)) {
+        if (tv.getLevel() == null) {
             return;
         }
         TvLayout layout = tv.layout(tv.getLevel().getGameTime());
         if (layout.invalid()) {
             return;
         }
-        Direction facing = state.getValue(HorizontalDirectionalBlock.FACING);
+        ScreenFrame frame = layout.frame();
         Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
-        if (inFront(tv, facing, camera)) {
+        if (inFront(tv, frame, camera)) {
             TvPlayers.markSeen(layout.origin());
         }
         // The same gap for every TV of the screen (measured to its origin), so the picture stays flat.
         float gap = Math.clamp((float) Math.sqrt(layout.origin().distToCenterSqr(camera)) * GAP_PER_DISTANCE,
                 MIN_GAP, MAX_GAP);
-        float front = -0.5f - gap;
+        float front = (float) -frame.frontDistance() - gap;
+        // One TV is a cell this wide (a diagonal TV is wider than a block).
+        float cell = (float) frame.cellWidth();
 
         // Picture rectangle in screen coordinates (blocks; x from the viewer's left, y up), letterboxed.
-        float areaW = layout.cols() - 2 * BEZEL;
+        float screenW = layout.cols() * cell;
+        float areaW = screenW - 2 * BEZEL;
         float areaH = layout.rows() - 2 * BEZEL;
         // Browsers and the test pattern are both 16:9.
         float aspect = 16 / 9f;
         float picW = Math.min(areaW, areaH * aspect);
         float picH = picW / aspect;
-        float picX0 = (layout.cols() - picW) / 2;
+        float picX0 = (screenW - picW) / 2;
         float picY0 = (layout.rows() - picH) / 2;
 
         // The part of the picture over this TV's cell.
-        float x0 = Math.max(picX0, layout.col());
-        float x1 = Math.min(picX0 + picW, layout.col() + 1);
+        float cellX0 = layout.col() * cell;
+        float x0 = Math.max(picX0, cellX0);
+        float x1 = Math.min(picX0 + picW, cellX0 + cell);
         float y0 = Math.max(picY0, layout.row());
         float y1 = Math.min(picY0 + picH, layout.row() + 1);
         if (x0 >= x1 || y0 >= y1) {
@@ -94,13 +95,15 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
 
         poseStack.pushPose();
         poseStack.translate(0.5, 0.5, 0.5);
-        // Front face at -Z, the viewer's left is +X.
-        poseStack.mulPose(Axis.YP.rotationDegrees(180 - facing.toYRot()));
+        // Turned like the TV's model (whose screen faces north): then the screen faces -Z, the top of the
+        // picture is +Y and the viewer's left is +X.
+        poseStack.mulPose(Axis.YP.rotationDegrees(-frame.modelY() + frame.extraYaw()));
+        poseStack.mulPose(Axis.XP.rotationDegrees(-frame.modelX()));
         Matrix4f pose = poseStack.last().pose();
         ResourceLocation picture = TvPlayers.texture(layout.origin());
         VertexConsumer consumer = buffers.getBuffer(RenderType.text(picture != null ? picture : TestPattern.texture()));
-        float left = 0.5f - (x0 - layout.col());
-        float right = 0.5f - (x1 - layout.col());
+        float left = cell / 2 - (x0 - cellX0);
+        float right = cell / 2 - (x1 - cellX0);
         float top = y1 - layout.row() - 0.5f;
         float bottom = y0 - layout.row() - 0.5f;
         vertex(consumer, pose, left, top, front, u0, vTop);
@@ -108,7 +111,7 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         vertex(consumer, pose, right, bottom, front, u1, vBottom);
         vertex(consumer, pose, right, top, front, u1, vTop);
         if (picture == null && layout.col() == 0 && layout.row() == 0) {
-            drawCard(tv, layout, poseStack, buffers, picW, front);
+            drawCard(tv, layout, poseStack, buffers, picW, screenW, cell, front);
         }
         poseStack.popPose();
     }
@@ -119,7 +122,7 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
      * bottom-left), centered on the whole screen.
      */
     private static void drawCard(TvBlockEntity origin, TvLayout layout, PoseStack poseStack, MultiBufferSource buffers,
-            float picW, float front) {
+            float picW, float screenW, float cell, float front) {
         TvSource source = origin.source();
         if (source == null || source.service() != TvService.JELLYFIN || TvPlayers.isPlaying(origin.getBlockPos())) {
             return;
@@ -134,7 +137,7 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         float scale = Math.min(picW * 0.8f / Math.max(1, width), 1 / 32f);
         poseStack.pushPose();
         // The middle of the screen, as seen from the origin cell; x runs to the viewer's left here.
-        poseStack.translate(0.5f - layout.cols() / 2f, layout.rows() / 2f - 0.5f, front - 0.005f);
+        poseStack.translate(cell / 2 - screenW / 2, layout.rows() / 2f - 0.5f, front - 0.005f);
         // Font space has x to the right and y down: turn it to face the viewer.
         poseStack.scale(-scale, -scale, scale);
         font.drawInBatch(text, -font.width(text) / 2f, -font.lineHeight - 1, 0xFFFFFFFF, false,
@@ -144,10 +147,9 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         poseStack.popPose();
     }
 
-    /** Whether the camera is on the screen side of this TV's front face. */
-    private static boolean inFront(TvBlockEntity tv, Direction facing, Vec3 camera) {
-        Vec3 toCamera = camera.subtract(Vec3.atCenterOf(tv.getBlockPos()));
-        return toCamera.x * facing.getStepX() + toCamera.z * facing.getStepZ() > 0.5;
+    /** Whether the camera is on the screen side of this TV's screen. */
+    private static boolean inFront(TvBlockEntity tv, ScreenFrame frame, Vec3 camera) {
+        return camera.subtract(Vec3.atCenterOf(tv.getBlockPos())).dot(frame.normal()) > frame.frontDistance();
     }
 
     private static void vertex(VertexConsumer consumer, Matrix4f pose, float x, float y, float z, float u, float v) {
