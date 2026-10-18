@@ -6,16 +6,21 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 
+import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvService;
+import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.Direction;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
@@ -100,6 +105,32 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         vertex(consumer, pose, left, bottom, front, u0, vBottom);
         vertex(consumer, pose, right, bottom, front, u1, vBottom);
         vertex(consumer, pose, right, top, front, u1, vTop);
+        if (picture == null && layout.col() == 0 && layout.row() == 0) {
+            drawCard(tv, layout, poseStack, buffers, picW, front);
+        }
+        poseStack.popPose();
+    }
+
+    /**
+     * Someone else's Jellyfin plays only for them, so the screen says who is watching. Drawn once, by
+     * the screen's origin TV (this one, bottom-left), centered on the whole screen.
+     */
+    private static void drawCard(TvBlockEntity origin, TvLayout layout, PoseStack poseStack, MultiBufferSource buffers,
+            float picW, float front) {
+        TvSource source = origin.source();
+        if (source == null || source.service() != TvService.JELLYFIN || TvPlayers.isPlaying(origin.getBlockPos())) {
+            return;
+        }
+        Font font = Minecraft.getInstance().font;
+        Component text = Component.translatable("screen." + BlockCinema.MODID + ".jellyfin_card", source.ownerName());
+        float scale = Math.min(picW * 0.8f / Math.max(1, font.width(text)), 1 / 32f);
+        poseStack.pushPose();
+        // The middle of the screen, as seen from the origin cell; x runs to the viewer's left here.
+        poseStack.translate(0.5f - layout.cols() / 2f, layout.rows() / 2f - 0.5f, front - 0.005f);
+        // Font space has x to the right and y down: turn it to face the viewer.
+        poseStack.scale(-scale, -scale, scale);
+        font.drawInBatch(text, -font.width(text) / 2f, -font.lineHeight / 2f, 0xFFFFFFFF, false,
+                poseStack.last().pose(), buffers, Font.DisplayMode.NORMAL, 0xC0000000, LightTexture.FULL_BRIGHT);
         poseStack.popPose();
     }
 

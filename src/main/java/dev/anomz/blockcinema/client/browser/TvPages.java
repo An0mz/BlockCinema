@@ -16,6 +16,7 @@ import org.cef.network.CefRequest;
 import org.cef.network.CefResponse;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvPageRules;
 
 /**
  * Our own player pages, served from the mod jar under {@link #HOST}. The host is the mod's app ID in
@@ -24,7 +25,7 @@ import dev.anomz.blockcinema.BlockCinema;
  * can play from a home server without https (Chromium blocks http video on an https page).
  */
 public final class TvPages implements CefSchemeHandlerFactory {
-    public static final String HOST = "dev.anomz.blockcinema";
+    public static final String HOST = TvPageRules.HOST;
     public static final String ORIGIN = "https://" + HOST;
     private static final String WEB = "/assets/" + BlockCinema.MODID + "/web";
 

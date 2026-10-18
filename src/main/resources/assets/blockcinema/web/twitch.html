@@ -38,15 +38,15 @@
   window.blockcinemaSeek = function (seconds) {
   };
 
-  // Called by the mod when the player presses Play/Pause in the TV menu.
-  window.blockcinemaToggle = function () {
+  // Called by the mod to follow the TV's shared play/pause state.
+  window.blockcinemaSetPaused = function (paused) {
     if (!ready) {
       return;
     }
-    if (player.isPaused()) {
-      player.play();
-    } else {
+    if (paused) {
       player.pause();
+    } else {
+      player.play();
     }
   };
 

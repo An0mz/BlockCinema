@@ -3,6 +3,7 @@ package dev.anomz.blockcinema.client.screen;
 import org.lwjgl.glfw.GLFW;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -61,7 +62,7 @@ public final class TvFullscreenScreen extends Screen {
     @Override
     public void tick() {
         // Turned off, broken or too far away.
-        if (!TvPlayers.isPlaying(screen)) {
+        if (TvRemote.source(screen) == null) {
             onClose();
         }
     }
@@ -74,23 +75,16 @@ public final class TvFullscreenScreen extends Screen {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         switch (keyCode) {
-            case GLFW.GLFW_KEY_SPACE -> TvPlayers.togglePause(screen);
+            case GLFW.GLFW_KEY_SPACE -> TvRemote.togglePause(screen);
             case GLFW.GLFW_KEY_UP -> TvPlayers.setVolume(screen, TvPlayers.volume(screen) + VOLUME_STEP);
             case GLFW.GLFW_KEY_DOWN -> TvPlayers.setVolume(screen, TvPlayers.volume(screen) - VOLUME_STEP);
-            case GLFW.GLFW_KEY_LEFT -> skip(-SKIP_SECONDS);
-            case GLFW.GLFW_KEY_RIGHT -> skip(SKIP_SECONDS);
+            case GLFW.GLFW_KEY_LEFT -> TvRemote.skip(screen, -SKIP_SECONDS);
+            case GLFW.GLFW_KEY_RIGHT -> TvRemote.skip(screen, SKIP_SECONDS);
             default -> {
                 return super.keyPressed(keyCode, scanCode, modifiers);
             }
         }
         return true;
-    }
-
-    private void skip(int seconds) {
-        TvPlayers.Position position = TvPlayers.position(screen);
-        if (position != null) {
-            TvPlayers.seek(screen, position.time() + seconds);
-        }
     }
 
     @Override

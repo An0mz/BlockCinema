@@ -49,17 +49,20 @@
     }
   };
 
-  // Called by the mod when the player presses Play/Pause in the TV menu.
-  window.blockcinemaToggle = function () {
+  // Called by the mod to follow the TV's shared play/pause state. Out of sight, a resume waits until seen.
+  var wantPaused = false;
+  window.blockcinemaSetPaused = function (paused) {
+    wantPaused = paused;
     if (!ready) {
       return;
     }
-    var state = player.getPlayerState();
-    pausedOutOfSight = false;
-    if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) {
+    if (paused) {
+      pausedOutOfSight = false;
       player.pauseVideo();
-    } else {
+    } else if (visible) {
       player.playVideo();
+    } else {
+      pausedOutOfSight = true;
     }
   };
 
@@ -69,7 +72,7 @@
     if (!visible && (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING)) {
       player.pauseVideo();
       pausedOutOfSight = true;
-    } else if (visible && pausedOutOfSight) {
+    } else if (visible && pausedOutOfSight && !wantPaused) {
       pausedOutOfSight = false;
       player.playVideo();
     }
@@ -98,7 +101,7 @@
                 state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING);
           }, 1000);
           event.target.setVolume(Math.round(volume * 100));
-          if (visible) {
+          if (visible && !wantPaused) {
             event.target.playVideo();
           } else {
             pausedOutOfSight = true;

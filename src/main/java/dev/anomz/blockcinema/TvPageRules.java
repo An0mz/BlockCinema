@@ -1,0 +1,138 @@
+package dev.anomz.blockcinema;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+import org.jetbrains.annotations.Nullable;
+
+/**
+ * What a TV page URL may look like, checked by the server before it shares one with everybody. Pages are
+ * our own (see the client's {@code TvPages}); only video IDs, a channel name or a video link can be in
+ * them. No Minecraft or browser classes here, so the dedicated server can use it.
+ */
+public final class TvPageRules {
+    /** Our pages' host: the mod's app ID in reverse-DNS form, not a real domain. */
+    public static final String HOST = "dev.anomz.blockcinema";
+    public static final int MAX_PAGE_LENGTH = 4096;
+    public static final int MAX_LINK_LENGTH = 2048;
+
+    private static final Pattern VIDEO_ID = Pattern.compile("[A-Za-z0-9_-]{11}");
+    private static final Pattern LIST_ID = Pattern.compile("[A-Za-z0-9_-]{2,64}");
+    private static final Pattern TWITCH_CHANNEL = Pattern.compile("[a-z0-9_]{1,25}");
+
+    private TvPageRules() {
+    }
+
+    /** Whether {@code page} is one of our pages for {@code service}. Jellyfin is never shared, so never valid. */
+    public static boolean valid(TvService service, String page) {
+        if (page.length() > MAX_PAGE_LENGTH) {
+            return false;
+        }
+        URI uri;
+        try {
+            uri = new URI(page);
+        } catch (URISyntaxException e) {
+            return false;
+        }
+        String scheme = uri.getScheme();
+        if (!HOST.equals(uri.getHost()) || uri.getPort() != -1 || uri.getRawFragment() != null || uri.getUserInfo() != null) {
+            return false;
+        }
+        Map<String, String> query = query(uri.getRawQuery());
+        if (query == null) {
+            return false;
+        }
+        return switch (service) {
+            case YOUTUBE -> "https".equals(scheme) && "/youtube.html".equals(uri.getRawPath()) && youtubeQuery(query);
+            case TWITCH -> "https".equals(scheme) && "/twitch.html".equals(uri.getRawPath()) && query.size() == 1
+                    && TWITCH_CHANNEL.matcher(query.getOrDefault("channel", "")).matches();
+            case DIRECT_LINK -> "/video.html".equals(uri.getRawPath()) && query.size() == 1
+                    && videoSource(query.get("src"), scheme) != null;
+            case JELLYFIN -> false;
+        };
+    }
+
+    /** The host a video-link page plays from (lowercase), or null if it isn't a valid video-link page. */
+    @Nullable
+    public static String linkHost(String page) {
+        try {
+            URI uri = new URI(page);
+            Map<String, String> query = query(uri.getRawQuery());
+            URI src = query == null ? null : videoSource(query.get("src"), uri.getScheme());
+            return src == null ? null : src.getHost().toLowerCase(Locale.ROOT);
+        } catch (URISyntaxException e) {
+            return null;
+        }
+    }
+
+    /** Whether {@code host} is in {@code hosts} or a subdomain of one; an empty list allows any host. */
+    public static boolean hostAllowed(List<? extends String> hosts, String host) {
+        if (hosts.isEmpty()) {
+            return true;
+        }
+        String lower = host.toLowerCase(Locale.ROOT);
+        for (String allowed : hosts) {
+            String entry = allowed.trim().toLowerCase(Locale.ROOT);
+            if (lower.equals(entry) || lower.endsWith("." + entry)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean youtubeQuery(Map<String, String> query) {
+        String video = query.get("v");
+        String list = query.get("list");
+        if (video == null && list == null || query.size() != (video != null ? 1 : 0) + (list != null ? 1 : 0)) {
+            return false;
+        }
+        return (video == null || VIDEO_ID.matcher(video).matches()) && (list == null || LIST_ID.matcher(list).matches());
+    }
+
+    /** The video link in a video page, if it is an http(s) link served under the page's own scheme. */
+    @Nullable
+    private static URI videoSource(@Nullable String src, String pageScheme) {
+        if (src == null || src.length() > MAX_LINK_LENGTH || !("https".equals(pageScheme) || "http".equals(pageScheme))) {
+            return null;
+        }
+        try {
+            URI uri = new URI(src);
+            boolean ok = pageScheme.equals(uri.getScheme()) && uri.getHost() != null && uri.getUserInfo() == null;
+            return ok ? uri : null;
+        } catch (URISyntaxException e) {
+            return null;
+        }
+    }
+
+    /** Decoded query parameters, or null if a name repeats or the query is malformed. */
+    @Nullable
+    private static Map<String, String> query(@Nullable String raw) {
+        Map<String, String> params = new HashMap<>();
+        if (raw == null || raw.isEmpty()) {
+            return params;
+        }
+        for (String pair : raw.split("&")) {
+            int eq = pair.indexOf('=');
+            if (eq <= 0) {
+                return null;
+            }
+            try {
+                String name = URLDecoder.decode(pair.substring(0, eq), StandardCharsets.UTF_8);
+                String value = URLDecoder.decode(pair.substring(eq + 1), StandardCharsets.UTF_8);
+                if (params.put(name, value) != null) {
+                    return null;
+                }
+            } catch (IllegalArgumentException e) {
+                return null;
+            }
+        }
+        return params;
+    }
+}

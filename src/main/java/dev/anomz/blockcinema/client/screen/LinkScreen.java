@@ -5,7 +5,7 @@ import java.util.function.Function;
 
 import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.TvService;
-import dev.anomz.blockcinema.client.browser.TvPlayers;
+import dev.anomz.blockcinema.client.TvRemote;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.EditBox;
@@ -26,7 +26,7 @@ public final class LinkScreen extends Screen {
     private Component status = Component.empty();
 
     public LinkScreen(Screen parent, BlockPos screen, TvService service, Function<String, Optional<String>> toPage) {
-        super(service.displayName());
+        super(Component.translatable(service.translationKey()));
         this.parent = parent;
         this.screen = screen;
         this.service = service;
@@ -59,7 +59,7 @@ public final class LinkScreen extends Screen {
             status = Component.translatable("screen." + BlockCinema.MODID + ".bad_link." + service.id());
             return;
         }
-        TvPlayers.play(screen, page.get());
+        TvRemote.play(screen, service, page.get());
         minecraft.setScreen(null);
     }
 

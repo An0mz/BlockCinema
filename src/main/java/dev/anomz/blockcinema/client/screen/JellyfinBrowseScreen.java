@@ -5,7 +5,7 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import dev.anomz.blockcinema.BlockCinema;
-import dev.anomz.blockcinema.client.browser.TvPlayers;
+import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.browser.VideoLinks;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinApi;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinLogin;
@@ -124,8 +124,8 @@ public final class JellyfinBrowseScreen extends Screen {
                 return;
             }
             // Jellyfin keeps the watch position itself: start where it says, and tell it where we stopped.
-            String page = TvPlayers.withStart(VideoLinks.videoPage(playback.url(), api.authorization()), item.resumeSeconds());
-            TvPlayers.play(screen, page, false, position -> api.reportStopped(playback, position.time()));
+            TvRemote.playJellyfin(screen, VideoLinks.videoPage(playback.url(), api.authorization()), item.resumeSeconds(),
+                    position -> api.reportStopped(playback, position.time()));
             api.reportStarted(playback);
             if (!closed) {
                 minecraft.setScreen(null);

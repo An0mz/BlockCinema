@@ -50,12 +50,12 @@
     video.currentTime = Math.max(0, seconds);
   };
 
-  // Called by the mod when the player presses Play/Pause in the TV menu.
-  window.blockcinemaToggle = function () {
-    if (video.paused) {
-      video.play().catch(function () {});
-    } else {
+  // Called by the mod to follow the TV's shared play/pause state.
+  window.blockcinemaSetPaused = function (paused) {
+    if (paused) {
       video.pause();
+    } else {
+      video.play().catch(function () {});
     }
   };
 

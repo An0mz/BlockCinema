@@ -1,7 +1,8 @@
 package dev.anomz.blockcinema.client.browser;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
-
 import java.util.function.Consumer;
 
 import org.cef.CefClient;
@@ -13,10 +14,14 @@ import com.cinemamod.mcef.MCEFBrowser;
 import com.cinemamod.mcef.MCEFClient;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvService;
+import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Options;
@@ -30,19 +35,16 @@ import net.minecraft.world.phys.Vec3;
 import net.neoforged.fml.loading.FMLPaths;
 
 /**
- * The browsers playing on TV screens, one per screen, keyed by the screen's origin (its bottom-left TV
- * seen from the front). Only on this client for now; client thread only.
+ * The browsers playing on TV screens on this client, one per screen, keyed by the screen's origin (its
+ * bottom-left TV seen from the front). They follow what the server says each screen plays (see
+ * {@link TvSource}): started at the shared position, kept in step with pauses and jumps, and closed when
+ * the screen is turned off, broken or too far away. Client thread only.
  */
 public final class TvPlayers {
     public static final int WIDTH = 1280;
     public static final int HEIGHT = 720;
     /** A screen this far from the player stops. */
     private static final double MAX_DISTANCE = 96;
-
-    private static final Long2ObjectMap<Playing> PLAYING = new Long2ObjectOpenHashMap<>();
-    private static MCEFClient client;
-    private static int nextTextureId;
-
     /** State updates sent at least this often (in checks), in case the page wasn't ready for the last one. */
     private static final int STATE_RESEND_INTERVAL = 8;
     /**
@@ -50,9 +52,22 @@ public final class TvPlayers {
      * playing in a player the user can't see, so our YouTube page pauses until it is seen again.
      */
     private static final long OUT_OF_SIGHT_MILLIS = 3000;
+    /** Being this far off the shared position makes the screen jump back in step. */
+    private static final double MAX_DRIFT_SECONDS = 3;
+    /** At most one catch-up jump this often, so a buffering video isn't pushed around. */
+    private static final long SEEK_SYNC_MILLIS = 5000;
+    private static final long PAUSE_SYNC_MILLIS = 1500;
+    /** A Jellyfin video waits this long for the server to agree before it is dropped. */
+    private static final long PENDING_MILLIS = 10_000;
 
+    private static final Long2ObjectMap<Playing> PLAYING = new Long2ObjectOpenHashMap<>();
+    private static final Long2ObjectMap<PendingJellyfin> PENDING_JELLYFIN = new Long2ObjectOpenHashMap<>();
     private static final WatchPositions POSITIONS =
             new WatchPositions(FMLPaths.CONFIGDIR.get().resolve(BlockCinema.MODID).resolve("positions.json"));
+    private static final Consumer<Position> NOTHING = position -> {
+    };
+    private static MCEFClient client;
+    private static int nextTextureId;
 
     /** Where a video is: seconds in, its length (0 when live or not known yet) and whether it is paused. */
     public record Position(double time, double length, boolean paused) {
@@ -61,9 +76,15 @@ public final class TvPlayers {
         }
     }
 
+    /** A Jellyfin video this player asked the server to show; only this client can play it. */
+    private record PendingJellyfin(String page, Consumer<Position> onStop, long createdMillis) {
+    }
+
     private static final class Playing {
         final MCEFBrowser browser;
         final ResourceLocation texture;
+        /** What is loaded: the shared page, or this player's Jellyfin page. */
+        String key;
         /** Key for {@link WatchPositions}, or null when the service keeps the position itself. */
         @Nullable
         String resumeKey;
@@ -83,12 +104,12 @@ public final class TvPlayers {
         int checksSinceStateSent;
         /** Written by the renderer, read by the tick; both on the client thread. */
         long lastSeenMillis = Util.getMillis();
+        long lastSeekSyncMillis;
+        long lastPauseSyncMillis;
 
-        Playing(MCEFBrowser browser, ResourceLocation texture, @Nullable String resumeKey, Consumer<Position> onStop) {
+        Playing(MCEFBrowser browser, ResourceLocation texture) {
             this.browser = browser;
             this.texture = texture;
-            this.resumeKey = resumeKey;
-            this.onStop = onStop;
         }
 
         void stopped() {
@@ -110,45 +131,20 @@ public final class TvPlayers {
         return MCEF.isInitialized();
     }
 
-    private static final Consumer<Position> NOTHING = position -> {
-    };
-
-    /**
-     * Plays {@code url} (one of our pages) on the screen at {@code origin}, resuming where this video
-     * was left last time.
-     */
-    public static void play(BlockPos origin, String url) {
-        play(origin, url, true, NOTHING);
+    /** Where this player left the video on {@code page} last time, in seconds (0 if never or finished). */
+    public static double resumeSeconds(String page) {
+        return POSITIONS.get(page);
     }
 
     /**
-     * Like {@link #play(BlockPos, String)}. {@code resumeHere} false leaves resuming to the service (the
-     * URL then has its own start); {@code onStop} gets the last position once it stops playing.
+     * This player's Jellyfin video for the screen at {@code origin}, played once the server agrees (it
+     * only knows a Jellyfin video is on, not which). {@code onStop} gets the last position.
      */
-    public static void play(BlockPos origin, String pageUrl, boolean resumeHere, Consumer<Position> onStop) {
-        String resumeKey = resumeHere ? withoutFragment(pageUrl) : null;
-        String url = resumeKey != null ? withStart(pageUrl, POSITIONS.get(resumeKey)) : pageUrl;
-        Playing playing = PLAYING.get(origin.asLong());
-        if (playing != null) {
-            playing.stopped();
-            playing.resumeKey = resumeKey;
-            playing.onStop = onStop;
-            playing.position = null;
-            playing.browser.loadURL(url);
-            playing.volume = -1;
-            playing.lastSeenMillis = Util.getMillis();
-            return;
+    public static void expectJellyfin(BlockPos origin, String page, Consumer<Position> onStop) {
+        PendingJellyfin old = PENDING_JELLYFIN.put(origin.asLong(), new PendingJellyfin(page, onStop, Util.getMillis()));
+        if (old != null) {
+            old.onStop().accept(new Position(0, 0, true));
         }
-        MCEFBrowser browser = new MCEFBrowser(client(), url, false);
-        // A TV in the world must never change the player's mouse cursor (MCEF's default does).
-        browser.setCursorChangeListener(cursor -> {
-        });
-        browser.setCloseAllowed();
-        browser.createImmediately();
-        browser.resize(WIDTH, HEIGHT);
-        ResourceLocation texture = ResourceLocation.fromNamespaceAndPath(BlockCinema.MODID, "tv_browser_" + nextTextureId++);
-        Minecraft.getInstance().getTextureManager().register(texture, new BrowserTexture(browser));
-        PLAYING.put(origin.asLong(), new Playing(browser, texture, resumeKey, onStop));
     }
 
     /** {@code pageUrl} starting {@code seconds} in; our pages read the start from the fragment. */
@@ -159,25 +155,15 @@ public final class TvPlayers {
         return pageUrl + (pageUrl.contains("#") ? "&" : "#") + "start=" + (long) seconds;
     }
 
-    private static String withoutFragment(String url) {
-        int hash = url.indexOf('#');
-        return hash < 0 ? url : url.substring(0, hash);
-    }
-
     public static boolean isPlaying(BlockPos origin) {
         return PLAYING.containsKey(origin.asLong());
-    }
-
-    public static void stop(BlockPos origin) {
-        Playing playing = PLAYING.remove(origin.asLong());
-        if (playing != null) {
-            close(playing);
-        }
     }
 
     public static void stopAll() {
         PLAYING.values().forEach(TvPlayers::close);
         PLAYING.clear();
+        PENDING_JELLYFIN.values().forEach(pending -> pending.onStop().accept(new Position(0, 0, true)));
+        PENDING_JELLYFIN.clear();
     }
 
     /** The picture for the screen at {@code origin}, or null when nothing is showing there yet. */
@@ -194,18 +180,6 @@ public final class TvPlayers {
         return playing == null ? null : playing.position;
     }
 
-    /** Jumps to {@code seconds} into the video. */
-    public static void seek(BlockPos origin, double seconds) {
-        Playing playing = PLAYING.get(origin.asLong());
-        if (playing == null || playing.position == null || !playing.position.seekable()) {
-            return;
-        }
-        double target = Math.max(0, Math.min(seconds, playing.position.length() - 1));
-        playing.position = new Position(target, playing.position.length(), playing.position.paused());
-        playing.browser.executeJavaScript(String.format(Locale.ROOT, "window.blockcinemaSeek && blockcinemaSeek(%.1f)", target),
-                playing.browser.getURL(), 0);
-    }
-
     /** A page's report, on the client thread (from {@link StateReports}). */
     static void report(CefBrowser browser, double time, double length, boolean paused) {
         for (Playing playing : PLAYING.values()) {
@@ -215,22 +189,13 @@ public final class TvPlayers {
         }
     }
 
-    /** Pauses or resumes what the screen at {@code origin} plays, with the service player's own controls. */
-    public static void togglePause(BlockPos origin) {
-        Playing playing = PLAYING.get(origin.asLong());
-        if (playing != null) {
-            playing.browser.executeJavaScript("window.blockcinemaToggle && blockcinemaToggle()",
-                    playing.browser.getURL(), 0);
-        }
-    }
-
     /** The TV's own volume, 0 to 1 (1 when nothing plays). */
     public static float volume(BlockPos origin) {
         Playing playing = PLAYING.get(origin.asLong());
         return playing == null ? 1 : playing.userVolume;
     }
 
-    /** Sets the TV's own volume, 0 to 1, on top of the sound settings and distance. */
+    /** Sets the TV's own volume, 0 to 1, on top of the sound settings and distance. Only for this player. */
     public static void setVolume(BlockPos origin, float volume) {
         Playing playing = PLAYING.get(origin.asLong());
         if (playing != null) {
@@ -258,31 +223,137 @@ public final class TvPlayers {
     }
 
     /**
-     * Stops screens that were broken, changed shape or are too far away, sets each screen's volume
-     * from how far the player is from it, and tells it whether it is in sight. Run a few times a second.
+     * Starts, keeps in step and stops this client's browsers to match what the server says the screens
+     * near the player play, and sets each one's volume and whether it is in sight. Run a few times a second.
      */
     public static void tick(ClientLevel level, Player player) {
-        if (PLAYING.isEmpty()) {
+        long now = Util.getMillis();
+        PENDING_JELLYFIN.long2ObjectEntrySet().removeIf(entry -> {
+            boolean stale = now - entry.getValue().createdMillis() > PENDING_MILLIS && !PLAYING.containsKey(entry.getLongKey());
+            if (stale) {
+                entry.getValue().onStop().accept(new Position(0, 0, true));
+            }
+            return stale;
+        });
+        LongSet wanted = new LongOpenHashSet();
+        if (ready()) {
+            List<TvBlockEntity> tvs = new ArrayList<>(TvBlockEntity.CLIENT_PLAYING);
+            for (TvBlockEntity tv : tvs) {
+                follow(level, player, tv, now, wanted);
+            }
+        }
+        PLAYING.long2ObjectEntrySet().removeIf(entry -> {
+            if (wanted.contains(entry.getLongKey())) {
+                return false;
+            }
+            close(entry.getValue());
+            return true;
+        });
+    }
+
+    private static void follow(ClientLevel level, Player player, TvBlockEntity tv, long now, LongSet wanted) {
+        TvSource source = tv.source();
+        BlockPos origin = tv.getBlockPos();
+        if (source == null || tv.isRemoved() || tv.getLevel() != level
+                || origin.distToCenterSqr(player.position()) > MAX_DISTANCE * MAX_DISTANCE) {
             return;
         }
+        TvLayout layout = tv.layout(level.getGameTime());
+        if (layout.invalid() || !layout.origin().equals(origin)) {
+            return;
+        }
+        String page;
+        String key;
+        String resumeKey;
+        Consumer<Position> onStop;
+        if (source.service() == TvService.JELLYFIN) {
+            PendingJellyfin pending = PENDING_JELLYFIN.get(origin.asLong());
+            Playing current = PLAYING.get(origin.asLong());
+            boolean mine = source.owner().equals(player.getUUID());
+            if (!mine || pending == null && (current == null || !current.key.startsWith("jellyfin:"))) {
+                // Someone else's Jellyfin, or ours from before a relog: only a card is shown.
+                return;
+            }
+            if (pending == null) {
+                wanted.add(origin.asLong());
+                syncState(current, source, level.getGameTime(), now);
+                updateVolume(current, layout, player, now);
+                return;
+            }
+            PENDING_JELLYFIN.remove(origin.asLong());
+            page = pending.page();
+            key = "jellyfin:" + pending.page();
+            resumeKey = null;
+            onStop = pending.onStop();
+        } else {
+            page = source.page();
+            key = page;
+            resumeKey = page;
+            onStop = NOTHING;
+        }
+        wanted.add(origin.asLong());
+        Playing playing = PLAYING.get(origin.asLong());
+        if (playing == null || !playing.key.equals(key)) {
+            playing = start(origin, playing, withStart(page, source.position(level.getGameTime())), key, resumeKey, onStop);
+        }
+        syncState(playing, source, level.getGameTime(), now);
+        updateVolume(playing, layout, player, now);
+    }
+
+    private static Playing start(BlockPos origin, @Nullable Playing playing, String url, String key,
+            @Nullable String resumeKey, Consumer<Position> onStop) {
+        if (playing == null) {
+            MCEFBrowser browser = new MCEFBrowser(client(), url, false);
+            // A TV in the world must never change the player's mouse cursor (MCEF's default does).
+            browser.setCursorChangeListener(cursor -> {
+            });
+            browser.setCloseAllowed();
+            browser.createImmediately();
+            browser.resize(WIDTH, HEIGHT);
+            ResourceLocation texture = ResourceLocation.fromNamespaceAndPath(BlockCinema.MODID, "tv_browser_" + nextTextureId++);
+            Minecraft.getInstance().getTextureManager().register(texture, new BrowserTexture(browser));
+            playing = new Playing(browser, texture);
+            PLAYING.put(origin.asLong(), playing);
+        } else {
+            playing.stopped();
+            playing.browser.loadURL(url);
+        }
+        playing.key = key;
+        playing.resumeKey = resumeKey;
+        playing.onStop = onStop;
+        playing.position = null;
+        playing.volume = -1;
+        playing.lastSeenMillis = Util.getMillis();
+        playing.lastSeekSyncMillis = Util.getMillis();
+        return playing;
+    }
+
+    /** Pauses, resumes or jumps the page to match the shared state, gently. */
+    private static void syncState(Playing playing, TvSource source, long gameTime, long now) {
+        Position position = playing.position;
+        if (position == null) {
+            return;
+        }
+        // An out-of-sight YouTube page pauses itself; it is brought back in step once seen again.
+        if (source.paused() != position.paused() && (playing.visible || source.paused())
+                && now - playing.lastPauseSyncMillis > PAUSE_SYNC_MILLIS) {
+            playing.lastPauseSyncMillis = now;
+            run(playing, "window.blockcinemaSetPaused && blockcinemaSetPaused(" + source.paused() + ")");
+        }
+        double expected = source.position(gameTime);
+        if (playing.visible && position.seekable() && expected < position.length()
+                && Math.abs(position.time() - expected) > MAX_DRIFT_SECONDS && now - playing.lastSeekSyncMillis > SEEK_SYNC_MILLIS) {
+            playing.lastSeekSyncMillis = now;
+            run(playing, String.format(Locale.ROOT, "window.blockcinemaSeek && blockcinemaSeek(%.1f)", expected));
+        }
+    }
+
+    private static void updateVolume(Playing playing, TvLayout layout, Player player, long now) {
         Options options = Minecraft.getInstance().options;
         float gain = options.getSoundSourceVolume(SoundSource.MASTER) * options.getSoundSourceVolume(SoundSource.RECORDS);
-        Vec3 ear = player.getEyePosition();
-        long now = Util.getMillis();
-        PLAYING.long2ObjectEntrySet().removeIf(entry -> {
-            BlockPos origin = BlockPos.of(entry.getLongKey());
-            TvLayout layout = origin.distToCenterSqr(player.position()) < MAX_DISTANCE * MAX_DISTANCE
-                    && level.getBlockEntity(origin) instanceof TvBlockEntity tv ? tv.layout(level.getGameTime()) : null;
-            if (layout == null || !isOrigin(layout, origin)) {
-                close(entry.getValue());
-                return true;
-            }
-            Playing playing = entry.getValue();
-            playing.worldGain = gain * (playing.fullscreen ? 1 : TvVolume.falloff(distance(layout, ear)));
-            updateState(playing, playing.worldGain * playing.userVolume,
-                    playing.fullscreen || now - playing.lastSeenMillis < OUT_OF_SIGHT_MILLIS);
-            return false;
-        });
+        playing.worldGain = gain * (playing.fullscreen ? 1 : TvVolume.falloff(distance(layout, player.getEyePosition())));
+        updateState(playing, playing.worldGain * playing.userVolume,
+                playing.fullscreen || now - playing.lastSeenMillis < OUT_OF_SIGHT_MILLIS);
     }
 
     private static double distance(TvLayout layout, Vec3 ear) {
@@ -307,13 +378,11 @@ public final class TvPlayers {
         playing.volume = volume;
         playing.visible = visible;
         playing.checksSinceStateSent = 0;
-        playing.browser.executeJavaScript(
-                String.format(Locale.ROOT, "window.blockcinemaState && blockcinemaState(%.3f, %b)", volume, visible),
-                playing.browser.getURL(), 0);
+        run(playing, String.format(Locale.ROOT, "window.blockcinemaState && blockcinemaState(%.3f, %b)", volume, visible));
     }
 
-    private static boolean isOrigin(TvLayout layout, BlockPos origin) {
-        return !layout.invalid() && layout.origin().equals(origin);
+    private static void run(Playing playing, String script) {
+        playing.browser.executeJavaScript(script, playing.browser.getURL(), 0);
     }
 
     private static void close(Playing playing) {

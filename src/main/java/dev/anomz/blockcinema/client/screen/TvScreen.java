@@ -1,13 +1,16 @@
 package dev.anomz.blockcinema.client.screen;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvServerConfig;
 import dev.anomz.blockcinema.TvService;
+import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.client.browser.VideoLinks;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinLogin;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -40,7 +43,7 @@ public final class TvScreen extends Screen {
         int gridW = COLUMNS * TILE_WIDTH + (COLUMNS - 1) * GAP;
         int gridH = rows * TILE_HEIGHT + (rows - 1) * GAP;
         int left = (width - gridW) / 2;
-        boolean playing = TvPlayers.isPlaying(screen);
+        boolean playing = TvRemote.source(screen) != null;
         // Tiles and, while playing, the controls under them, centered together.
         int controlsH = playing ? GAP + CONTROL_ROWS * 20 + (CONTROL_ROWS - 1) * 4 : 0;
         int top = Math.max(24, (height - gridH - controlsH) / 2);
@@ -50,8 +53,13 @@ public final class TvScreen extends Screen {
             TvService service = services[i];
             int x = left + i % COLUMNS * (TILE_WIDTH + GAP);
             int y = top + i / COLUMNS * (TILE_HEIGHT + GAP);
-            addRenderableWidget(Button.builder(service.displayName(), button -> open(service))
+            Button tile = addRenderableWidget(Button.builder(Component.translatable(service.translationKey()), button -> open(service))
                     .bounds(x, y, TILE_WIDTH, TILE_HEIGHT).build());
+            // The server's settings (synced to this client); the server checks them again.
+            tile.active = TvServerConfig.enabled(service);
+            if (!tile.active) {
+                tile.setTooltip(Tooltip.create(Component.translatable(key("service_disabled"))));
+            }
         }
         if (playing) {
             addControls(left, gridW);
@@ -62,33 +70,28 @@ public final class TvScreen extends Screen {
     private void addControls(int left, int gridW) {
         int half = (gridW - GAP) / 2;
         int y = gridBottom + GAP;
-        addRenderableWidget(Button.builder(Component.translatable(key("play_pause")), button -> TvPlayers.togglePause(screen))
+        addRenderableWidget(Button.builder(Component.translatable(key("play_pause")), button -> TvRemote.togglePause(screen))
                 .bounds(left, y, half, 20).build());
-        addRenderableWidget(Button.builder(Component.translatable(key("fullscreen")),
+        Button fullscreen = addRenderableWidget(Button.builder(Component.translatable(key("fullscreen")),
                 button -> minecraft.setScreen(new TvFullscreenScreen(this, screen)))
                 .bounds(left + gridW - half, y, half, 20).build());
+        // Someone else's Jellyfin has no picture here.
+        fullscreen.active = TvPlayers.isPlaying(screen);
         y += 20 + 4;
         int skipW = 40;
-        addRenderableWidget(Button.builder(Component.literal("-" + SKIP_SECONDS + "s"), button -> skip(-SKIP_SECONDS))
+        addRenderableWidget(Button.builder(Component.literal("-" + SKIP_SECONDS + "s"), button -> TvRemote.skip(screen, -SKIP_SECONDS))
                 .bounds(left, y, skipW, 20).build());
         timeBar = addRenderableWidget(new TimeBar(left + skipW + 4, y, gridW - 2 * (skipW + 4), screen));
-        addRenderableWidget(Button.builder(Component.literal("+" + SKIP_SECONDS + "s"), button -> skip(SKIP_SECONDS))
+        addRenderableWidget(Button.builder(Component.literal("+" + SKIP_SECONDS + "s"), button -> TvRemote.skip(screen, SKIP_SECONDS))
                 .bounds(left + gridW - skipW, y, skipW, 20).build());
         y += 20 + 4;
         addRenderableWidget(new VolumeSlider(left, y, gridW, TvPlayers.volume(screen)));
         y += 20 + 4;
         addRenderableWidget(Button.builder(Component.translatable(key("turn_off")), button -> {
-            TvPlayers.stop(screen);
+            TvRemote.turnOff(screen);
             onClose();
         }).bounds(left, y, gridW, 20).build());
         gridBottom = y + 20;
-    }
-
-    private void skip(int seconds) {
-        TvPlayers.Position position = TvPlayers.position(screen);
-        if (position != null) {
-            TvPlayers.seek(screen, position.time() + seconds);
-        }
     }
 
     @Override
@@ -130,7 +133,7 @@ public final class TvScreen extends Screen {
             case JELLYFIN -> {
                 JellyfinLogin login = JellyfinLogin.load();
                 minecraft.setScreen(login != null
-                        ? new JellyfinBrowseScreen(this, screen, login, null, service.displayName())
+                        ? new JellyfinBrowseScreen(this, screen, login, null, Component.translatable(service.translationKey()))
                         : new JellyfinLoginScreen(this, screen));
             }
             case DIRECT_LINK -> minecraft.setScreen(new LinkScreen(this, screen, service, VideoLinks::direct));

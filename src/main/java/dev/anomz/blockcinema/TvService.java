@@ -2,11 +2,9 @@ package dev.anomz.blockcinema;
 
 import java.util.Locale;
 
-import net.minecraft.network.chat.Component;
-
 /**
- * The only things a TV can show. There is no free web browsing: each service has its own player
- * and its own list of allowed sites.
+ * The only things a TV can show. There is no free web browsing: each service has its own player and
+ * its own list of allowed sites. No Minecraft classes here, so tests can use it.
  */
 public enum TvService {
     YOUTUBE,
@@ -19,7 +17,8 @@ public enum TvService {
         return name().toLowerCase(Locale.ROOT);
     }
 
-    public Component displayName() {
-        return Component.translatable("service." + BlockCinema.MODID + "." + id());
+    /** The service's name in the language files. */
+    public String translationKey() {
+        return "service." + BlockCinema.MODID + "." + id();
     }
 }

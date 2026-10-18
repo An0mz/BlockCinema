@@ -3,6 +3,7 @@ package dev.anomz.blockcinema.client.screen;
 import java.util.Locale;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.core.BlockPos;
@@ -79,7 +80,7 @@ final class TimeBar extends AbstractSliderButton {
     private void seekToValue() {
         TvPlayers.Position position = TvPlayers.position(screen);
         if (position != null && position.seekable()) {
-            TvPlayers.seek(screen, value * position.length());
+            TvRemote.seek(screen, value * position.length());
         }
     }
 }

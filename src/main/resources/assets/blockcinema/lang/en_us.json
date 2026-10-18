@@ -2,6 +2,8 @@
   "block.blockcinema.tv": "TV",
   "message.blockcinema.tv_shape": "These TVs aren't one screen: make a filled rectangle, up to %sx%s",
   "screen.blockcinema.tv": "TV",
+  "screen.blockcinema.service_disabled": "Turned off on this server",
+  "screen.blockcinema.jellyfin_card": "%s is watching Jellyfin",
   "screen.blockcinema.browser_not_ready": "The TV player is still being set up (MCEF downloads it on first start)",
   "screen.blockcinema.turn_off": "Turn off",
   "screen.blockcinema.play_pause": "Play / Pause",
