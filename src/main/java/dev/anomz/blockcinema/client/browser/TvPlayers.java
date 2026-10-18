@@ -68,6 +68,7 @@ public final class TvPlayers {
     };
     private static MCEFClient client;
     private static int nextTextureId;
+    private static boolean gamePaused;
 
     /** Where a video is: seconds in, its length (0 when live or not known yet) and whether it is paused. */
     public record Position(double time, double length, boolean paused) {
@@ -228,6 +229,12 @@ public final class TvPlayers {
      */
     public static void tick(ClientLevel level, Player player) {
         long now = Util.getMillis();
+        // Singleplayer paused (Esc menu): the world's clock stands still, so the TVs pause with it.
+        boolean gamePaused = Minecraft.getInstance().isPaused();
+        if (gamePaused != TvPlayers.gamePaused) {
+            TvPlayers.gamePaused = gamePaused;
+            PLAYING.values().forEach(playing -> playing.lastPauseSyncMillis = 0);
+        }
         PENDING_JELLYFIN.long2ObjectEntrySet().removeIf(entry -> {
             boolean stale = now - entry.getValue().createdMillis() > PENDING_MILLIS && !PLAYING.containsKey(entry.getLongKey());
             if (stale) {
@@ -334,14 +341,15 @@ public final class TvPlayers {
         if (position == null) {
             return;
         }
+        boolean paused = source.paused() || gamePaused;
         // An out-of-sight YouTube page pauses itself; it is brought back in step once seen again.
-        if (source.paused() != position.paused() && (playing.visible || source.paused())
+        if (paused != position.paused() && (playing.visible || paused)
                 && now - playing.lastPauseSyncMillis > PAUSE_SYNC_MILLIS) {
             playing.lastPauseSyncMillis = now;
-            run(playing, "window.blockcinemaSetPaused && blockcinemaSetPaused(" + source.paused() + ")");
+            run(playing, "window.blockcinemaSetPaused && blockcinemaSetPaused(" + paused + ")");
         }
         double expected = source.position(gameTime);
-        if (playing.visible && position.seekable() && expected < position.length()
+        if (!gamePaused && playing.visible && position.seekable() && expected < position.length()
                 && Math.abs(position.time() - expected) > MAX_DRIFT_SECONDS && now - playing.lastSeekSyncMillis > SEEK_SYNC_MILLIS) {
             playing.lastSeekSyncMillis = now;
             run(playing, String.format(Locale.ROOT, "window.blockcinemaSeek && blockcinemaSeek(%.1f)", expected));

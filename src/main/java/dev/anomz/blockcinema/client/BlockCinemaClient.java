@@ -35,9 +35,12 @@ public final class BlockCinemaClient {
         NeoForge.EVENT_BUS.addListener(BlockCinemaClient::onLoggingOut);
     }
 
+    /** Counts client ticks; game time can't be used, as it stands still while singleplayer is paused. */
+    private static int ticks;
+
     private static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.level != null && minecraft.player != null && minecraft.level.getGameTime() % 5 == 0) {
+        if (minecraft.level != null && minecraft.player != null && ++ticks % 5 == 0) {
             TvPlayers.tick(minecraft.level, minecraft.player);
         }
     }
