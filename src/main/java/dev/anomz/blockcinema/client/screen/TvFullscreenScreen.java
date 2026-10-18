@@ -13,10 +13,11 @@ import net.minecraft.resources.ResourceLocation;
 /**
  * A TV's picture filling the game window, letterboxed. Nothing is drawn over the picture (YouTube's
  * terms forbid covering its player); the key help goes in the bars beside or below it, when there are any.
- * Space pauses, up and down change the TV's volume, Esc goes back.
+ * Space pauses, left and right skip 10 seconds, up and down change the TV's volume, Esc goes back.
  */
 public final class TvFullscreenScreen extends Screen {
     private static final float VOLUME_STEP = 0.1f;
+    private static final int SKIP_SECONDS = 10;
 
     private final Screen parent;
     private final BlockPos screen;
@@ -45,8 +46,11 @@ public final class TvFullscreenScreen extends Screen {
             TvPlayers.markSeen(screen);
             graphics.blit(picture, x, y, picW, picH, 0, 0, TvPlayers.WIDTH, TvPlayers.HEIGHT, TvPlayers.WIDTH, TvPlayers.HEIGHT);
         }
+        TvPlayers.Position position = TvPlayers.position(screen);
+        String time = position == null ? "" : position.seekable()
+                ? TimeBar.format(position.time()) + " / " + TimeBar.format(position.length()) + "   " : "";
         Component help = Component.translatable("screen." + BlockCinema.MODID + ".fullscreen_help",
-                Math.round(TvPlayers.volume(screen) * 100));
+                time, Math.round(TvPlayers.volume(screen) * 100));
         if (height - (y + picH) >= font.lineHeight + 4) {
             graphics.drawCenteredString(font, help, width / 2, y + picH + 2, 0x808080);
         } else if (x >= font.width(help) + 8) {
@@ -73,11 +77,20 @@ public final class TvFullscreenScreen extends Screen {
             case GLFW.GLFW_KEY_SPACE -> TvPlayers.togglePause(screen);
             case GLFW.GLFW_KEY_UP -> TvPlayers.setVolume(screen, TvPlayers.volume(screen) + VOLUME_STEP);
             case GLFW.GLFW_KEY_DOWN -> TvPlayers.setVolume(screen, TvPlayers.volume(screen) - VOLUME_STEP);
+            case GLFW.GLFW_KEY_LEFT -> skip(-SKIP_SECONDS);
+            case GLFW.GLFW_KEY_RIGHT -> skip(SKIP_SECONDS);
             default -> {
                 return super.keyPressed(keyCode, scanCode, modifiers);
             }
         }
         return true;
+    }
+
+    private void skip(int seconds) {
+        TvPlayers.Position position = TvPlayers.position(screen);
+        if (position != null) {
+            TvPlayers.seek(screen, position.time() + seconds);
+        }
     }
 
     @Override

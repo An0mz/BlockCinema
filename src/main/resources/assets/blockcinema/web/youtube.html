@@ -16,6 +16,8 @@
   var params = new URLSearchParams(location.search);
   var video = /^[A-Za-z0-9_-]{11}$/.test(params.get('v') || '') ? params.get('v') : null;
   var list = /^[A-Za-z0-9_-]{2,64}$/.test(params.get('list') || '') ? params.get('list') : null;
+  // Where to start, in seconds (resuming), passed in the fragment.
+  var start = Math.floor(Number(new URLSearchParams(location.hash.slice(1)).get('start')) || 0);
   var player;
   var ready = false;
   var volume = 1;
@@ -30,6 +32,20 @@
     visible = newVisible;
     if (ready) {
       apply();
+    }
+  };
+
+  // Where the video is, once a second, for the mod's time bar and resume (read from the browser console):
+  // "[blockcinema-state] <seconds> <length in seconds, 0 if live or unknown> <1 if paused>".
+  function report(time, length, paused) {
+    console.log('[blockcinema-state] ' + (time || 0).toFixed(1) + ' ' + (isFinite(length) && length > 0 ? length.toFixed(1) : '0')
+        + ' ' + (paused ? 1 : 0));
+  }
+
+  // Called by the mod to jump to a time, in seconds.
+  window.blockcinemaSeek = function (seconds) {
+    if (ready) {
+      player.seekTo(Math.max(0, seconds), true);
     }
   };
 
@@ -61,6 +77,9 @@
 
   function onYouTubeIframeAPIReady() {
     var vars = { autoplay: 1, playsinline: 1, rel: 0, origin: location.origin };
+    if (start > 0) {
+      vars.start = start;
+    }
     if (list) {
       vars.listType = 'playlist';
       vars.list = list;
@@ -73,6 +92,11 @@
       events: {
         onReady: function (event) {
           ready = true;
+          setInterval(function () {
+            var state = player.getPlayerState();
+            report(player.getCurrentTime(), player.getDuration(),
+                state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING);
+          }, 1000);
           event.target.setVolume(Math.round(volume * 100));
           if (visible) {
             event.target.playVideo();

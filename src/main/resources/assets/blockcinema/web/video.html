@@ -19,7 +19,10 @@
   var video = document.getElementById('video');
   var src = new URLSearchParams(location.search).get('src') || '';
   // A Jellyfin login header, passed in the fragment so it is never sent anywhere but to that server.
-  var auth = new URLSearchParams(location.hash.slice(1)).get('auth');
+  var fragment = new URLSearchParams(location.hash.slice(1));
+  var auth = fragment.get('auth');
+  // Where to start, in seconds (resuming).
+  var start = Number(fragment.get('start')) || 0;
   var volume = 1;
 
   function show(text) {
@@ -33,6 +36,18 @@
   window.blockcinemaState = function (newVolume, visible) {
     volume = newVolume;
     video.volume = Math.max(0, Math.min(1, volume));
+  };
+
+  // Where the video is, once a second, for the mod's time bar and resume (read from the browser console):
+  // "[blockcinema-state] <seconds> <length in seconds, 0 if live or unknown> <1 if paused>".
+  function report(time, length, paused) {
+    console.log('[blockcinema-state] ' + (time || 0).toFixed(1) + ' ' + (isFinite(length) && length > 0 ? length.toFixed(1) : '0')
+        + ' ' + (paused ? 1 : 0));
+  }
+
+  // Called by the mod to jump to a time, in seconds.
+  window.blockcinemaSeek = function (seconds) {
+    video.currentTime = Math.max(0, seconds);
   };
 
   // Called by the mod when the player presses Play/Pause in the TV menu.
@@ -56,6 +71,7 @@
     show('No video');
   } else if (/\.m3u8$/i.test(url.pathname) && window.Hls && Hls.isSupported()) {
     var hls = new Hls({
+      startPosition: start > 0 ? start : -1,
       xhrSetup: function (xhr, requestUrl) {
         if (auth && new URL(requestUrl).origin === url.origin) {
           xhr.setRequestHeader('Authorization', auth);
@@ -71,7 +87,15 @@
     hls.attachMedia(video);
   } else {
     video.src = src;
+    video.addEventListener('loadedmetadata', function () {
+      if (start > 0 && (!isFinite(video.duration) || start < video.duration - 5)) {
+        video.currentTime = start;
+      }
+    }, { once: true });
   }
+  setInterval(function () {
+    report(video.currentTime, video.duration, video.paused);
+  }, 1000);
   video.addEventListener('error', function () {
     show('Can\'t play this video' + (video.error ? ' (error ' + video.error.code + ')' : ''));
   });

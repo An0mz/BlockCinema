@@ -1,0 +1,28 @@
+package dev.anomz.blockcinema.client.browser;
+
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import org.junit.jupiter.api.Test;
+
+class StateReportsTest {
+    @Test
+    void parsesReports() {
+        assertArrayEquals(new double[] { 12.5, 600, 1 }, StateReports.parse("[blockcinema-state] 12.5 600.0 1"));
+        assertArrayEquals(new double[] { 3, 0, 0 }, StateReports.parse("[blockcinema-state] 3.0 0 0"));
+        assertNull(StateReports.parse("[blockcinema-state] 1 2"));
+        assertNull(StateReports.parse("[blockcinema-state] NaN 2 0"));
+        assertNull(StateReports.parse("[blockcinema-state] -1 2 0"));
+        assertNull(StateReports.parse("something else"));
+    }
+
+    @Test
+    void onlyOurPagesCount() {
+        assertTrue(StateReports.fromOurPage("https://dev.anomz.blockcinema/youtube.html?v=dQw4w9WgXcQ"));
+        assertTrue(StateReports.fromOurPage("http://dev.anomz.blockcinema/video.html?src=x"));
+        assertFalse(StateReports.fromOurPage("https://www.youtube.com/s/player/base.js"));
+        assertFalse(StateReports.fromOurPage(""));
+    }
+}

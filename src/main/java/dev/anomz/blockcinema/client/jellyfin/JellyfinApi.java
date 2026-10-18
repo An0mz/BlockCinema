@@ -39,8 +39,12 @@ public final class JellyfinApi {
     public record QuickConnect(String secret, String code) {
     }
 
-    public record Item(String id, String name, String type, boolean folder, String detail) {
+    /** {@code resumeSeconds}: where the user stopped watching last time, in any Jellyfin app (0 if not started). */
+    public record Item(String id, String name, String type, boolean folder, String detail, double resumeSeconds) {
     }
+
+    /** Jellyfin counts time in ticks of 100 ns. */
+    private static final double TICKS_PER_SECOND = 10_000_000;
 
     /** {@code url} is the stream for the TV page; the rest is for reporting playback to Jellyfin. */
     public record Playback(String url, String itemId, String mediaSourceId, String playSessionId) {
@@ -141,7 +145,7 @@ public final class JellyfinApi {
     /** What is in a library or folder (series, seasons and so on), sorted by name. */
     public CompletableFuture<List<Item>> children(String userId, String parentId) {
         return get("/Items?userId=" + encode(userId) + "&parentId=" + encode(parentId)
-                + "&sortBy=SortName&fields=ProductionYear&limit=500").thenApply(JellyfinApi::items);
+                + "&sortBy=SortName&fields=ProductionYear&enableUserData=true&limit=500").thenApply(JellyfinApi::items);
     }
 
     /**
@@ -196,9 +200,11 @@ public final class JellyfinApi {
         return post("/Sessions/Playing", playbackInfo(playback)).thenApply(json -> null);
     }
 
-    /** Tells Jellyfin playback stopped, so it stops transcoding. */
-    public CompletableFuture<Void> reportStopped(Playback playback) {
-        return post("/Sessions/Playing/Stopped", playbackInfo(playback)).thenApply(json -> null);
+    /** Tells Jellyfin playback stopped {@code seconds} in, so it saves the position and stops transcoding. */
+    public CompletableFuture<Void> reportStopped(Playback playback, double seconds) {
+        JsonObject info = playbackInfo(playback);
+        info.addProperty("PositionTicks", (long) (seconds * TICKS_PER_SECOND));
+        return post("/Sessions/Playing/Stopped", info).thenApply(json -> null);
     }
 
     private static JsonObject playbackInfo(Playback playback) {
@@ -216,8 +222,11 @@ public final class JellyfinApi {
             JsonObject item = element.getAsJsonObject();
             String type = string(item, "Type");
             String detail = item.has("ProductionYear") ? item.get("ProductionYear").getAsString() : "";
+            JsonObject userData = item.has("UserData") && item.get("UserData").isJsonObject() ? item.getAsJsonObject("UserData") : null;
+            double resume = userData != null && userData.has("PlaybackPositionTicks")
+                    ? userData.get("PlaybackPositionTicks").getAsLong() / TICKS_PER_SECOND : 0;
             items.add(new Item(string(item, "Id"), string(item, "Name"), type,
-                    item.has("IsFolder") && item.get("IsFolder").getAsBoolean(), detail));
+                    item.has("IsFolder") && item.get("IsFolder").getAsBoolean(), detail, resume));
         }
         return items;
     }

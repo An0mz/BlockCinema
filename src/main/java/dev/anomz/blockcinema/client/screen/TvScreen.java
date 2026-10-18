@@ -18,8 +18,11 @@ public final class TvScreen extends Screen {
     private static final int TILE_HEIGHT = 40;
     private static final int GAP = 8;
     private static final int COLUMNS = 2;
+    private static final int CONTROL_ROWS = 4;
+    private static final int SKIP_SECONDS = 10;
 
     private final BlockPos screen;
+    private TimeBar timeBar;
     private Component status = Component.empty();
     private int gridTop;
     private int gridBottom;
@@ -37,7 +40,10 @@ public final class TvScreen extends Screen {
         int gridW = COLUMNS * TILE_WIDTH + (COLUMNS - 1) * GAP;
         int gridH = rows * TILE_HEIGHT + (rows - 1) * GAP;
         int left = (width - gridW) / 2;
-        int top = (height - gridH) / 2;
+        boolean playing = TvPlayers.isPlaying(screen);
+        // Tiles and, while playing, the controls under them, centered together.
+        int controlsH = playing ? GAP + CONTROL_ROWS * 20 + (CONTROL_ROWS - 1) * 4 : 0;
+        int top = Math.max(24, (height - gridH - controlsH) / 2);
         gridTop = top;
         gridBottom = top + gridH;
         for (int i = 0; i < services.length; i++) {
@@ -47,7 +53,7 @@ public final class TvScreen extends Screen {
             addRenderableWidget(Button.builder(service.displayName(), button -> open(service))
                     .bounds(x, y, TILE_WIDTH, TILE_HEIGHT).build());
         }
-        if (TvPlayers.isPlaying(screen)) {
+        if (playing) {
             addControls(left, gridW);
         }
     }
@@ -62,6 +68,13 @@ public final class TvScreen extends Screen {
                 button -> minecraft.setScreen(new TvFullscreenScreen(this, screen)))
                 .bounds(left + gridW - half, y, half, 20).build());
         y += 20 + 4;
+        int skipW = 40;
+        addRenderableWidget(Button.builder(Component.literal("-" + SKIP_SECONDS + "s"), button -> skip(-SKIP_SECONDS))
+                .bounds(left, y, skipW, 20).build());
+        timeBar = addRenderableWidget(new TimeBar(left + skipW + 4, y, gridW - 2 * (skipW + 4), screen));
+        addRenderableWidget(Button.builder(Component.literal("+" + SKIP_SECONDS + "s"), button -> skip(SKIP_SECONDS))
+                .bounds(left + gridW - skipW, y, skipW, 20).build());
+        y += 20 + 4;
         addRenderableWidget(new VolumeSlider(left, y, gridW, TvPlayers.volume(screen)));
         y += 20 + 4;
         addRenderableWidget(Button.builder(Component.translatable(key("turn_off")), button -> {
@@ -69,6 +82,20 @@ public final class TvScreen extends Screen {
             onClose();
         }).bounds(left, y, gridW, 20).build());
         gridBottom = y + 20;
+    }
+
+    private void skip(int seconds) {
+        TvPlayers.Position position = TvPlayers.position(screen);
+        if (position != null) {
+            TvPlayers.seek(screen, position.time() + seconds);
+        }
+    }
+
+    @Override
+    public void tick() {
+        if (timeBar != null) {
+            timeBar.refresh();
+        }
     }
 
     private static String key(String name) {

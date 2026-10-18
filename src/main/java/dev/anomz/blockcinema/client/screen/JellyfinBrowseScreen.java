@@ -123,8 +123,9 @@ public final class JellyfinBrowseScreen extends Screen {
                 }
                 return;
             }
-            TvPlayers.play(screen, VideoLinks.videoPage(playback.url(), api.authorization()),
-                    () -> api.reportStopped(playback));
+            // Jellyfin keeps the watch position itself: start where it says, and tell it where we stopped.
+            String page = TvPlayers.withStart(VideoLinks.videoPage(playback.url(), api.authorization()), item.resumeSeconds());
+            TvPlayers.play(screen, page, false, position -> api.reportStopped(playback, position.time()));
             api.reportStarted(playback);
             if (!closed) {
                 minecraft.setScreen(null);
@@ -196,7 +197,10 @@ public final class JellyfinBrowseScreen extends Screen {
                     int mouseY, boolean hovering, float partialTick) {
                 String name = item.folder() ? item.name() + "/" : item.name();
                 graphics.drawString(font, font.plainSubstrByWidth(name, width - 50), left + 4, top + 4, 0xFFFFFF);
-                graphics.drawString(font, item.detail(), left + width - 4 - font.width(item.detail()), top + 4, 0x808080);
+                String detail = item.resumeSeconds() > 0
+                        ? Component.translatable(key("resume_at"), TimeBar.format(item.resumeSeconds())).getString()
+                        : item.detail();
+                graphics.drawString(font, detail, left + width - 4 - font.width(detail), top + 4, 0x808080);
             }
 
             @Override
