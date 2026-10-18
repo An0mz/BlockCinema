@@ -50,15 +50,24 @@ public final class TvPlayers {
     private static final class Playing {
         final MCEFBrowser browser;
         final ResourceLocation texture;
+        /** Runs once when this stops playing (turned off, replaced, broken or too far away). */
+        Runnable onStop;
         float volume = -1;
         boolean visible = true;
         int checksSinceStateSent;
         /** Written by the renderer, read by the tick; both on the client thread. */
         long lastSeenMillis = Util.getMillis();
 
-        Playing(MCEFBrowser browser, ResourceLocation texture) {
+        Playing(MCEFBrowser browser, ResourceLocation texture, Runnable onStop) {
             this.browser = browser;
             this.texture = texture;
+            this.onStop = onStop;
+        }
+
+        void stopped() {
+            Runnable run = onStop;
+            onStop = NOTHING;
+            run.run();
         }
     }
 
@@ -70,10 +79,20 @@ public final class TvPlayers {
         return MCEF.isInitialized();
     }
 
+    private static final Runnable NOTHING = () -> {
+    };
+
     /** Plays {@code url} (one of our pages) on the screen at {@code origin}. */
     public static void play(BlockPos origin, String url) {
+        play(origin, url, NOTHING);
+    }
+
+    /** Like {@link #play(BlockPos, String)}; {@code onStop} runs once when it stops playing. */
+    public static void play(BlockPos origin, String url, Runnable onStop) {
         Playing playing = PLAYING.get(origin.asLong());
         if (playing != null) {
+            playing.stopped();
+            playing.onStop = onStop;
             playing.browser.loadURL(url);
             playing.volume = -1;
             playing.lastSeenMillis = Util.getMillis();
@@ -88,7 +107,7 @@ public final class TvPlayers {
         browser.resize(WIDTH, HEIGHT);
         ResourceLocation texture = ResourceLocation.fromNamespaceAndPath(BlockCinema.MODID, "tv_browser_" + nextTextureId++);
         Minecraft.getInstance().getTextureManager().register(texture, new BrowserTexture(browser));
-        PLAYING.put(origin.asLong(), new Playing(browser, texture));
+        PLAYING.put(origin.asLong(), new Playing(browser, texture, onStop));
     }
 
     public static boolean isPlaying(BlockPos origin) {
@@ -177,6 +196,7 @@ public final class TvPlayers {
     }
 
     private static void close(Playing playing) {
+        playing.stopped();
         playing.browser.close();
         Minecraft.getInstance().getTextureManager().release(playing.texture);
     }
@@ -187,7 +207,9 @@ public final class TvPlayers {
      */
     private static MCEFClient client() {
         if (client == null) {
-            MCEF.getApp().getHandle().registerSchemeHandlerFactory("https", TvPages.HOST, new TvPages());
+            TvPages pages = new TvPages();
+            MCEF.getApp().getHandle().registerSchemeHandlerFactory("https", TvPages.HOST, pages);
+            MCEF.getApp().getHandle().registerSchemeHandlerFactory("http", TvPages.HOST, pages);
             CefClient handle = MCEF.getApp().getHandle().createClient();
             handle.addRequestHandler(new NavigationGuard.Requests());
             handle.addLifeSpanHandler(new NavigationGuard.Popups());

@@ -134,6 +134,9 @@ dependencies {
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    // The tests run without Minecraft; they only need what Minecraft would otherwise provide here
+    // (same version as Minecraft 1.21.1 ships).
+    testImplementation 'com.google.code.gson:gson:2.11.0'
 
     // Example optional mod dependency with JEI
     // The JEI API is declared for compile time use, while the full JEI artifact is used at runtime
@@ -197,9 +200,9 @@ publishing {
     }
 }
 
-// Ship the mod's license.
+// Ship the mod's license, and hls.js's next to the bundled copy of it.
 tasks.named('jar', Jar) {
-    from('LICENSE')
+    from('LICENSE', 'LICENSE-Apache-2.0.txt', 'THIRD-PARTY-NOTICES.md')
 }
 
 tasks.named('test', Test) {

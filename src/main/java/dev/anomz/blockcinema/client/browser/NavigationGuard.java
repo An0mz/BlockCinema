@@ -10,10 +10,11 @@ import org.cef.handler.CefRequestHandlerAdapter;
 import org.cef.network.CefRequest;
 
 /**
- * Keeps TV browsers on our own player pages: the page itself can only be one of ours, and nothing can
- * open a new window. The players embedded in our pages (YouTube, Twitch) may load their own frames,
- * which includes their ads, so frames are only held to https. There is no address bar and no mouse
- * input on a TV, so nothing else can be browsed to.
+ * Keeps TV browsers on our own player pages: the page itself can only be one of ours (over https, or
+ * http for home servers), and nothing can open a new window. The players embedded in our pages
+ * (YouTube, Twitch) may load their own frames, which includes their ads, so frames are only held to
+ * https. Videos the video page plays are not frames, so they aren't checked here. There is no address
+ * bar and no mouse input on a TV, so nothing else can be browsed to.
  */
 final class NavigationGuard {
     private NavigationGuard() {
@@ -28,7 +29,7 @@ final class NavigationGuard {
         }
         String scheme = uri.getScheme();
         if (mainFrame) {
-            return "https".equals(scheme) && TvPages.HOST.equals(uri.getHost());
+            return ("https".equals(scheme) || "http".equals(scheme)) && TvPages.HOST.equals(uri.getHost());
         }
         return "https".equals(scheme) || "about".equals(scheme);
     }

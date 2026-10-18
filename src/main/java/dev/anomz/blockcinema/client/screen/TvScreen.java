@@ -4,6 +4,7 @@ import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.client.browser.VideoLinks;
+import dev.anomz.blockcinema.client.jellyfin.JellyfinLogin;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
@@ -63,9 +64,13 @@ public final class TvScreen extends Screen {
         switch (service) {
             case YOUTUBE -> minecraft.setScreen(new LinkScreen(this, screen, service, VideoLinks::youtube));
             case TWITCH -> minecraft.setScreen(new LinkScreen(this, screen, service, VideoLinks::twitch));
-            // Jellyfin and video links come in a later milestone.
-            default -> status = Component.translatable("screen." + BlockCinema.MODID + ".not_available",
-                    service.displayName());
+            case JELLYFIN -> {
+                JellyfinLogin login = JellyfinLogin.load();
+                minecraft.setScreen(login != null
+                        ? new JellyfinBrowseScreen(this, screen, login, null, service.displayName())
+                        : new JellyfinLoginScreen(this, screen));
+            }
+            case DIRECT_LINK -> minecraft.setScreen(new LinkScreen(this, screen, service, VideoLinks::direct));
         }
     }
 

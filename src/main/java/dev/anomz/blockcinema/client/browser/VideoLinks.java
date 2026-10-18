@@ -2,14 +2,18 @@ package dev.anomz.blockcinema.client.browser;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import org.jetbrains.annotations.Nullable;
+
 /**
- * Turns what the player typed into one of our player pages. Only YouTube video/playlist links and
- * Twitch channels are accepted, and only their IDs are passed on, so nothing else can be loaded.
+ * Turns what the player typed into one of our player pages. For YouTube and Twitch only video/playlist
+ * IDs and channel names are passed on, so nothing else can be loaded; direct links only ever play as video.
  */
 public final class VideoLinks {
     private static final Pattern VIDEO_ID = Pattern.compile("[A-Za-z0-9_-]{11}");
@@ -17,6 +21,7 @@ public final class VideoLinks {
     private static final Pattern TWITCH_CHANNEL = Pattern.compile("[A-Za-z0-9_]{1,25}");
     private static final Set<String> YOUTUBE_HOSTS = Set.of("youtube.com", "www.youtube.com", "m.youtube.com",
             "music.youtube.com", "youtube-nocookie.com", "www.youtube-nocookie.com");
+    private static final int MAX_LINK_LENGTH = 2048;
     private static final Set<String> TWITCH_HOSTS = Set.of("twitch.tv", "www.twitch.tv", "m.twitch.tv");
 
     private VideoLinks() {
@@ -66,6 +71,34 @@ public final class VideoLinks {
             }
         }
         return Optional.of(TvPages.ORIGIN + "/twitch.html?channel=" + channel.toLowerCase(Locale.ROOT));
+    }
+
+    /**
+     * A direct link to a video file or HLS stream (http or https). It is only ever loaded as a video
+     * by our video page, so a link to a web page just fails to play; it is never shown as a site.
+     */
+    public static Optional<String> direct(String input) {
+        String text = input.trim();
+        if (text.length() > MAX_LINK_LENGTH || !text.contains("://")) {
+            return Optional.empty();
+        }
+        URI uri = parse(text);
+        if (uri == null || uri.getHost() == null || uri.getUserInfo() != null) {
+            return Optional.empty();
+        }
+        return Optional.of(videoPage(uri.toString(), null));
+    }
+
+    /**
+     * Our video page playing {@code src}. The page uses the stream's scheme, as Chromium won't play an
+     * http stream on an https page. {@code authorization} (a Jellyfin header) goes in the fragment,
+     * which the browser never sends anywhere; the page adds it to its requests to that server.
+     */
+    public static String videoPage(String src, @Nullable String authorization) {
+        String scheme = src.regionMatches(true, 0, "https:", 0, 6) ? "https" : "http";
+        String page = TvPages.origin(scheme) + "/video.html?src=" + URLEncoder.encode(src, StandardCharsets.UTF_8);
+        return authorization == null ? page
+                : page + "#auth=" + URLEncoder.encode(authorization, StandardCharsets.UTF_8);
     }
 
     private static String youtubePage(String video, String list) {
