@@ -1,0 +1,38 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<!-- YouTube identifies embedding apps by the Referer; keep the default origin-only referrer. -->
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<style>
+  html, body, #player { margin: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
+</style>
+</head>
+<body>
+<div id="player"></div>
+<script>
+  // Plays one video or playlist with the official YouTube IFrame Player API, filling the page.
+  // Nothing is drawn over the player.
+  var params = new URLSearchParams(location.search);
+  var video = /^[A-Za-z0-9_-]{11}$/.test(params.get('v') || '') ? params.get('v') : null;
+  var list = /^[A-Za-z0-9_-]{2,64}$/.test(params.get('list') || '') ? params.get('list') : null;
+  var player;
+
+  function onYouTubeIframeAPIReady() {
+    var vars = { autoplay: 1, playsinline: 1, rel: 0, origin: location.origin };
+    if (list) {
+      vars.listType = 'playlist';
+      vars.list = list;
+    }
+    player = new YT.Player('player', {
+      width: '100%',
+      height: '100%',
+      videoId: video || undefined,
+      playerVars: vars,
+      events: { onReady: function (event) { event.target.playVideo(); } }
+    });
+  }
+</script>
+<script src="https://www.youtube.com/iframe_api"></script>
+</body>
+</html>

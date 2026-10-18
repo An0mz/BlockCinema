@@ -2,28 +2,30 @@ package dev.anomz.blockcinema.client.screen;
 
 import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.TvService;
+import dev.anomz.blockcinema.client.browser.TvPlayers;
+import dev.anomz.blockcinema.client.browser.VideoLinks;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 
-/** The TV's menu: one tile per service, nothing else (no address bar). */
+/** The TV's menu: one tile per service and a power button, nothing else (no address bar). */
 public final class TvScreen extends Screen {
     private static final int TILE_WIDTH = 120;
     private static final int TILE_HEIGHT = 40;
     private static final int GAP = 8;
     private static final int COLUMNS = 2;
 
-    private final BlockPos tv;
+    private final BlockPos screen;
     private Component status = Component.empty();
     private int gridTop;
     private int gridBottom;
 
-    /** {@code tv} is the TV that was clicked; the players will use it to know which screen to fill. */
-    public TvScreen(BlockPos tv) {
+    /** {@code screen} is the origin of the clicked TV's screen (see {@code TvLayout}). */
+    public TvScreen(BlockPos screen) {
         super(Component.translatable("screen." + BlockCinema.MODID + ".tv"));
-        this.tv = tv;
+        this.screen = screen;
     }
 
     @Override
@@ -43,11 +45,28 @@ public final class TvScreen extends Screen {
             addRenderableWidget(Button.builder(service.displayName(), button -> open(service))
                     .bounds(x, y, TILE_WIDTH, TILE_HEIGHT).build());
         }
+        if (TvPlayers.isPlaying(screen)) {
+            gridBottom += GAP + 20;
+            addRenderableWidget(Button.builder(Component.translatable("screen." + BlockCinema.MODID + ".turn_off"),
+                    button -> {
+                        TvPlayers.stop(screen);
+                        onClose();
+                    }).bounds(left, gridBottom - 20, gridW, 20).build());
+        }
     }
 
     private void open(TvService service) {
-        // The players come in later milestones.
-        status = Component.translatable("screen." + BlockCinema.MODID + ".not_available", service.displayName());
+        if (!TvPlayers.ready()) {
+            status = Component.translatable("screen." + BlockCinema.MODID + ".browser_not_ready");
+            return;
+        }
+        switch (service) {
+            case YOUTUBE -> minecraft.setScreen(new LinkScreen(this, screen, service, VideoLinks::youtube));
+            case TWITCH -> minecraft.setScreen(new LinkScreen(this, screen, service, VideoLinks::twitch));
+            // Jellyfin and video links come in a later milestone.
+            default -> status = Component.translatable("screen." + BlockCinema.MODID + ".not_available",
+                    service.displayName());
+        }
     }
 
     @Override

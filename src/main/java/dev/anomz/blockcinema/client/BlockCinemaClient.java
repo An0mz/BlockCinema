@@ -4,6 +4,7 @@ import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.BlockCinemaRegistries;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
+import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.client.render.TvRenderer;
 import dev.anomz.blockcinema.client.screen.TvScreen;
 import net.minecraft.client.Minecraft;
@@ -15,6 +16,8 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
@@ -28,6 +31,19 @@ public final class BlockCinemaClient {
     public BlockCinemaClient(IEventBus modEventBus, ModContainer container) {
         modEventBus.addListener(BlockCinemaClient::onRegisterRenderers);
         NeoForge.EVENT_BUS.addListener(BlockCinemaClient::onRightClickBlock);
+        NeoForge.EVENT_BUS.addListener(BlockCinemaClient::onClientTick);
+        NeoForge.EVENT_BUS.addListener(BlockCinemaClient::onLoggingOut);
+    }
+
+    private static void onClientTick(ClientTickEvent.Post event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level != null && minecraft.player != null && minecraft.level.getGameTime() % 20 == 0) {
+            TvPlayers.tick(minecraft.level, minecraft.player);
+        }
+    }
+
+    private static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
+        TvPlayers.stopAll();
     }
 
     private static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {
@@ -50,6 +66,6 @@ public final class BlockCinemaClient {
                     TvLayout.MAX_COLS, TvLayout.MAX_ROWS), true);
             return;
         }
-        Minecraft.getInstance().setScreen(new TvScreen(event.getPos()));
+        Minecraft.getInstance().setScreen(new TvScreen(layout.origin()));
     }
 }

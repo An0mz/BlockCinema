@@ -8,19 +8,21 @@ import com.mojang.math.Axis;
 
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
+import dev.anomz.blockcinema.client.browser.TvPlayers;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
 
 /**
  * Draws this TV's slice of its screen's picture, letterboxed inside the bezel around the whole screen.
  * Every TV of a screen computes the same picture rectangle and draws only the part over itself.
- * For now the picture is always the test pattern.
+ * The picture is the screen's browser, or the test pattern while nothing is playing.
  */
 public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
     /** Frame around the whole screen, matching the bezel in the TV texture. */
@@ -45,7 +47,8 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         // Picture rectangle in screen coordinates (blocks; x from the viewer's left, y up), letterboxed.
         float areaW = layout.cols() - 2 * BEZEL;
         float areaH = layout.rows() - 2 * BEZEL;
-        float aspect = TestPattern.WIDTH / (float) TestPattern.HEIGHT;
+        // Browsers and the test pattern are both 16:9.
+        float aspect = 16 / 9f;
         float picW = Math.min(areaW, areaH * aspect);
         float picH = picW / aspect;
         float picX0 = (layout.cols() - picW) / 2;
@@ -70,7 +73,8 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         // Front face at -Z, the viewer's left is +X.
         poseStack.mulPose(Axis.YP.rotationDegrees(180 - facing.toYRot()));
         Matrix4f pose = poseStack.last().pose();
-        VertexConsumer consumer = buffers.getBuffer(RenderType.text(TestPattern.texture()));
+        ResourceLocation picture = TvPlayers.texture(layout.origin());
+        VertexConsumer consumer = buffers.getBuffer(RenderType.text(picture != null ? picture : TestPattern.texture()));
         float left = 0.5f - (x0 - layout.col());
         float right = 0.5f - (x1 - layout.col());
         float top = y1 - layout.row() - 0.5f;

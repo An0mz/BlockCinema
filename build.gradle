@@ -27,7 +27,11 @@ sourceSets.main.resources {
 }
 
 repositories {
-    // Add here additional repositories if required by some of the dependencies below.
+    // MCEF (Chromium for Minecraft, LGPL-2.1), used as a separate mod.
+    maven {
+        url = 'https://mcef-download.cinemamod.com/repositories/releases'
+        content { includeGroup 'com.cinemamod' }
+    }
 }
 
 base {
@@ -124,6 +128,9 @@ configurations {
 }
 
 dependencies {
+    // The NeoForge jar holds all of MCEF and java-cef; its POM also lists Fabric, which we don't want.
+    implementation("com.cinemamod:mcef-neoforge:${mcef_version}") { transitive = false }
+
     testImplementation platform('org.junit:junit-bom:5.10.2')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
@@ -163,6 +170,7 @@ var generateModMetadata = tasks.register("generateModMetadata", ProcessResources
             mod_name               : mod_name,
             mod_license            : mod_license,
             mod_version            : mod_version,
+            mcef_version           : mcef_version,
     ]
     inputs.properties replaceProperties
     expand replaceProperties
