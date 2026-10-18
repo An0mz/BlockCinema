@@ -1,0 +1,19 @@
+{
+  "variants": {
+    "facing=north": {
+      "model": "blockcinema:block/tv"
+    },
+    "facing=east": {
+      "model": "blockcinema:block/tv",
+      "y": 90
+    },
+    "facing=south": {
+      "model": "blockcinema:block/tv",
+      "y": 180
+    },
+    "facing=west": {
+      "model": "blockcinema:block/tv",
+      "y": 270
+    }
+  }
+}
