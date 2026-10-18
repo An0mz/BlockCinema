@@ -52,6 +52,12 @@ public final class TvPlayers {
         final ResourceLocation texture;
         /** Runs once when this stops playing (turned off, replaced, broken or too far away). */
         Runnable onStop;
+        /** This TV's own volume, 0 to 1, set from its menu. */
+        float userVolume = 1;
+        /** Volume from the sound settings and the player's distance (or full when watched fullscreen). */
+        float worldGain = 1;
+        boolean fullscreen;
+        /** Last volume sent to the page; -1 sends it again. */
         float volume = -1;
         boolean visible = true;
         int checksSinceStateSent;
@@ -133,6 +139,40 @@ public final class TvPlayers {
         return playing == null || playing.browser.getRenderer().getTextureID() == 0 ? null : playing.texture;
     }
 
+    /** Pauses or resumes what the screen at {@code origin} plays, with the service player's own controls. */
+    public static void togglePause(BlockPos origin) {
+        Playing playing = PLAYING.get(origin.asLong());
+        if (playing != null) {
+            playing.browser.executeJavaScript("window.blockcinemaToggle && blockcinemaToggle()",
+                    playing.browser.getURL(), 0);
+        }
+    }
+
+    /** The TV's own volume, 0 to 1 (1 when nothing plays). */
+    public static float volume(BlockPos origin) {
+        Playing playing = PLAYING.get(origin.asLong());
+        return playing == null ? 1 : playing.userVolume;
+    }
+
+    /** Sets the TV's own volume, 0 to 1, on top of the sound settings and distance. */
+    public static void setVolume(BlockPos origin, float volume) {
+        Playing playing = PLAYING.get(origin.asLong());
+        if (playing != null) {
+            playing.userVolume = Math.max(0, Math.min(1, volume));
+            sendState(playing, playing.worldGain * playing.userVolume, playing.visible);
+        }
+    }
+
+    /** While watched fullscreen, the screen plays at full volume whatever the distance, and counts as in sight. */
+    public static void setFullscreen(BlockPos origin, boolean fullscreen) {
+        Playing playing = PLAYING.get(origin.asLong());
+        if (playing != null) {
+            playing.fullscreen = fullscreen;
+            playing.volume = -1;
+            playing.lastSeenMillis = Util.getMillis();
+        }
+    }
+
     /** Called while drawing a screen seen from the front. */
     public static void markSeen(BlockPos origin) {
         Playing playing = PLAYING.get(origin.asLong());
@@ -162,8 +202,9 @@ public final class TvPlayers {
                 return true;
             }
             Playing playing = entry.getValue();
-            updateState(playing, gain * TvVolume.falloff(distance(layout, ear)),
-                    now - playing.lastSeenMillis < OUT_OF_SIGHT_MILLIS);
+            playing.worldGain = gain * (playing.fullscreen ? 1 : TvVolume.falloff(distance(layout, ear)));
+            updateState(playing, playing.worldGain * playing.userVolume,
+                    playing.fullscreen || now - playing.lastSeenMillis < OUT_OF_SIGHT_MILLIS);
             return false;
         });
     }
@@ -183,6 +224,10 @@ public final class TvPlayers {
                 && ++playing.checksSinceStateSent < STATE_RESEND_INTERVAL) {
             return;
         }
+        sendState(playing, volume, visible);
+    }
+
+    private static void sendState(Playing playing, float volume, boolean visible) {
         playing.volume = volume;
         playing.visible = visible;
         playing.checksSinceStateSent = 0;

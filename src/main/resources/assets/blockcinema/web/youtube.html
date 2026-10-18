@@ -33,6 +33,20 @@
     }
   };
 
+  // Called by the mod when the player presses Play/Pause in the TV menu.
+  window.blockcinemaToggle = function () {
+    if (!ready) {
+      return;
+    }
+    var state = player.getPlayerState();
+    pausedOutOfSight = false;
+    if (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING) {
+      player.pauseVideo();
+    } else {
+      player.playVideo();
+    }
+  };
+
   function apply() {
     player.setVolume(Math.round(volume * 100));
     var state = player.getPlayerState();

@@ -35,6 +35,15 @@
     video.volume = Math.max(0, Math.min(1, volume));
   };
 
+  // Called by the mod when the player presses Play/Pause in the TV menu.
+  window.blockcinemaToggle = function () {
+    if (video.paused) {
+      video.play().catch(function () {});
+    } else {
+      video.pause();
+    }
+  };
+
   console.log('[blockcinema] video: H.264 ' + video.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"')
       + ', MSE H.264 ' + (window.MediaSource && MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E,mp4a.40.2"')));
 

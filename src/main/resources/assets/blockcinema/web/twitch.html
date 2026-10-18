@@ -27,6 +27,18 @@
     }
   };
 
+  // Called by the mod when the player presses Play/Pause in the TV menu.
+  window.blockcinemaToggle = function () {
+    if (!ready) {
+      return;
+    }
+    if (player.isPaused()) {
+      player.play();
+    } else {
+      player.pause();
+    }
+  };
+
   if (/^[a-z0-9_]{1,25}$/.test(channel)) {
     player = new Twitch.Player('player', {
       channel: channel,

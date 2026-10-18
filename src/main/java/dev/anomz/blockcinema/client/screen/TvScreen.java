@@ -6,6 +6,7 @@ import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.client.browser.VideoLinks;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinLogin;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
@@ -47,12 +48,47 @@ public final class TvScreen extends Screen {
                     .bounds(x, y, TILE_WIDTH, TILE_HEIGHT).build());
         }
         if (TvPlayers.isPlaying(screen)) {
-            gridBottom += GAP + 20;
-            addRenderableWidget(Button.builder(Component.translatable("screen." + BlockCinema.MODID + ".turn_off"),
-                    button -> {
-                        TvPlayers.stop(screen);
-                        onClose();
-                    }).bounds(left, gridBottom - 20, gridW, 20).build());
+            addControls(left, gridW);
+        }
+    }
+
+    /** Below the tiles while something plays: play/pause, fullscreen, the TV's volume and turning it off. */
+    private void addControls(int left, int gridW) {
+        int half = (gridW - GAP) / 2;
+        int y = gridBottom + GAP;
+        addRenderableWidget(Button.builder(Component.translatable(key("play_pause")), button -> TvPlayers.togglePause(screen))
+                .bounds(left, y, half, 20).build());
+        addRenderableWidget(Button.builder(Component.translatable(key("fullscreen")),
+                button -> minecraft.setScreen(new TvFullscreenScreen(this, screen)))
+                .bounds(left + gridW - half, y, half, 20).build());
+        y += 20 + 4;
+        addRenderableWidget(new VolumeSlider(left, y, gridW, TvPlayers.volume(screen)));
+        y += 20 + 4;
+        addRenderableWidget(Button.builder(Component.translatable(key("turn_off")), button -> {
+            TvPlayers.stop(screen);
+            onClose();
+        }).bounds(left, y, gridW, 20).build());
+        gridBottom = y + 20;
+    }
+
+    private static String key(String name) {
+        return "screen." + BlockCinema.MODID + "." + name;
+    }
+
+    private final class VolumeSlider extends AbstractSliderButton {
+        VolumeSlider(int x, int y, int width, double value) {
+            super(x, y, width, 20, Component.empty(), value);
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            setMessage(Component.translatable(key("volume"), Math.round(value * 100)));
+        }
+
+        @Override
+        protected void applyValue() {
+            TvPlayers.setVolume(screen, (float) value);
         }
     }
 
