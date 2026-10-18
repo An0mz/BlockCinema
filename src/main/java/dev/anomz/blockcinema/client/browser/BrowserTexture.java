@@ -18,6 +18,15 @@ final class BrowserTexture extends AbstractTexture {
         return browser.getRenderer().getTextureID();
     }
 
+    /**
+     * Always smooth. Minecraft's render types set their texture's filter every time they are used, and
+     * the text one we draw with asks for sharp pixels, which makes video look blocky.
+     */
+    @Override
+    public void setFilter(boolean blur, boolean mipmap) {
+        super.setFilter(true, false);
+    }
+
     @Override
     public void releaseId() {
     }

@@ -43,8 +43,13 @@ import net.neoforged.fml.loading.FMLPaths;
  * the screen is turned off, broken or too far away. Client thread only.
  */
 public final class TvPlayers {
-    public static final int WIDTH = 1280;
-    public static final int HEIGHT = 720;
+    /** Browser size for small screens; big screens and fullscreen get {@link #HD_WIDTH} (and YouTube picks 1080p). */
+    private static final int WIDTH = 1280;
+    private static final int HEIGHT = 720;
+    private static final int HD_WIDTH = 1920;
+    private static final int HD_HEIGHT = 1080;
+    /** Screens at least this many blocks wide play in 1080p. */
+    private static final int HD_COLUMNS = 4;
     /** A screen this far from the player stops. */
     private static final double MAX_DISTANCE = 96;
     /** State updates sent at least this often (in checks), in case the page wasn't ready for the last one. */
@@ -94,6 +99,8 @@ public final class TvPlayers {
         /** Volume from the sound settings and the player's distance (or full when watched fullscreen). */
         float worldGain = 1;
         boolean fullscreen;
+        /** The browser's width now (its height is 9/16 of it). */
+        int width = WIDTH;
         /** Last volume sent to the page; -1 sends it again. */
         float volume = -1;
         boolean visible = true;
@@ -267,6 +274,11 @@ public final class TvPlayers {
             playing = start(origin, playing, withStart(page, source.position(level.getGameTime())), key, resumeKey, onStop);
         }
         wanted.add(origin.asLong());
+        int width = playing.fullscreen || layout.cols() >= HD_COLUMNS ? HD_WIDTH : WIDTH;
+        if (width != playing.width) {
+            playing.width = width;
+            playing.browser.resize(width, width == HD_WIDTH ? HD_HEIGHT : HEIGHT);
+        }
         syncState(playing, source, level.getGameTime(), now);
         updateVolume(playing, layout, player, now);
     }

@@ -14,6 +14,7 @@ TVs only show these services through their official players. There is no address
 - **Jellyfin**: log in to your own Jellyfin server with Quick Connect (approve a code in your Jellyfin app; no password is typed into Minecraft), browse your libraries and play. Videos resume where you left them, in any Jellyfin app.
 - **Video links**: any `https://` (or `http://`) video file or `.m3u8` stream.
 - Controls in the TV menu: play/pause, a time bar, -10s/+10s, the TV's own volume, and fullscreen (Space, Left/Right, Up/Down, Esc).
+- Sharp picture: big screens and fullscreen play in 1080p.
 - Sound fades with distance, following your Master and Jukebox/Note Blocks volume.
 - YouTube and video links resume where you left them.
 - Multiplayer: everyone near a TV watches the same thing at the same moment. Pausing, jumping and turning off are shared. Video never goes through the server: each player's game plays it.

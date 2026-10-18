@@ -45,7 +45,8 @@ public final class TvFullscreenScreen extends Screen {
         int y = (height - picH) / 2;
         if (picture != null) {
             TvPlayers.markSeen(screen);
-            graphics.blit(picture, x, y, picW, picH, 0, 0, TvPlayers.WIDTH, TvPlayers.HEIGHT, TvPlayers.WIDTH, TvPlayers.HEIGHT);
+            // The whole texture, whatever size the browser is.
+            graphics.blit(picture, x, y, picW, picH, 0, 0, 16, 9, 16, 9);
         }
         TvPlayers.Position position = TvPlayers.position(screen);
         String time = position == null ? "" : position.seekable()
