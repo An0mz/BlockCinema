@@ -36,17 +36,20 @@ displayName="${mod_name}" #mandatory
 # A URL for the "homepage" for this mod, displayed in the mod UI
 displayURL="https://github.com/An0mz/BlockCinema" #optional
 
-#logoFile="blockcinema_logo.png" #optional
+# A file name (in the root of the mod JAR) containing a logo for display
+logoFile="blockcinema_logo.png" #optional
 
 # A text field displayed in the mod UI
+credits="Videos play in Chromium through MCEF (https://github.com/CinemaMod/mcef, LGPL-2.1). HLS playback by hls.js (https://github.com/video-dev/hls.js, Apache-2.0). YouTube, Twitch and Jellyfin are trademarks of their owners; Block Cinema isn't affiliated with them." #optional
 
 # The authors of the mod, displayed in the mod UI (optional)
 authors="Anomz"
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
-Watch YouTube, Twitch, your own Jellyfin server and direct video links on TV blocks inside Minecraft.
-Only allowed services are shown: there is no general web browsing.
+Watch YouTube, Twitch, your own Jellyfin server and direct video links on TV blocks, alone or together.
+Put TVs side by side for screens up to 16x9 blocks. Only these services can be shown: there is no web browsing.
+Needs MCEF on the client, which downloads Chromium on first start.
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.
