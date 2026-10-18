@@ -10,25 +10,26 @@ import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinApi;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinLogin;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinWatch;
-import net.minecraft.ChatFormatting;
+import dev.anomz.blockcinema.client.screen.ui.Icon;
+import dev.anomz.blockcinema.client.screen.ui.PanelScreen;
+import dev.anomz.blockcinema.client.screen.ui.TextButton;
+import dev.anomz.blockcinema.client.screen.ui.Ui;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
 /**
  * One level of the player's Jellyfin library: the libraries themselves at the top, then folders,
  * series and seasons. Folders open another level; videos play on the TV.
  */
-public final class JellyfinBrowseScreen extends Screen {
+public final class JellyfinBrowseScreen extends PanelScreen {
     private static final int DOUBLE_CLICK_MILLIS = 300;
+    private static final int ROW_H = 20;
 
-    private final Screen parent;
     private final BlockPos screen;
     private JellyfinLogin login;
     @Nullable
@@ -36,20 +37,23 @@ public final class JellyfinBrowseScreen extends Screen {
     private final JellyfinApi api;
     private List<JellyfinApi.Item> items;
     private ItemList list;
-    private Button open;
+    private TextButton open;
     private Component status = Component.empty();
+    private boolean statusIsError;
     private boolean loading;
     private boolean closed;
 
     /** {@code folderId} null lists the user's libraries. */
     public JellyfinBrowseScreen(Screen parent, BlockPos screen, JellyfinLogin login, @Nullable String folderId,
             Component title) {
-        super(title);
-        this.parent = parent;
+        super(title, parent);
         this.screen = screen;
         this.login = login;
         this.folderId = folderId;
         this.api = JellyfinApi.of(login, JellyfinApi.appVersion());
+        if (folderId == null) {
+            subtitle = Component.translatable(key("logged_in_as"), login.userName());
+        }
     }
 
     private static String key(String name) {
@@ -57,35 +61,50 @@ public final class JellyfinBrowseScreen extends Screen {
     }
 
     @Override
-    protected void init() {
+    protected int panelWidth() {
+        return 420;
+    }
+
+    @Override
+    protected int panelHeight() {
+        return 300;
+    }
+
+    private int bottomBarY() {
+        return panelY + panelH - Ui.PAD - 20;
+    }
+
+    @Override
+    protected void initContent() {
         // Back from a folder opened from here.
         closed = false;
-        list = addRenderableWidget(new ItemList(minecraft, width, height - 64, 32));
+        int listTop = contentTop() - 4;
+        list = addRenderableWidget(new ItemList(minecraft, panelW - 2 * Ui.PAD, bottomBarY() - 8 - listTop, listTop));
+        list.setX(panelX + Ui.PAD);
         if (items != null) {
             items.forEach(item -> list.add(item));
         }
-        int buttonW = 100;
-        int y = height - 26;
-        boolean root = folderId == null;
-        int count = root ? 3 : 2;
-        int left = (width - count * buttonW - (count - 1) * 8) / 2;
-        open = addRenderableWidget(Button.builder(Component.translatable(key("open")), button -> openSelected())
-                .bounds(left, y, buttonW, 20).build());
+        int x = contentLeft();
+        int w = contentWidth();
+        open = addRenderableWidget(new TextButton(x + w - 90, bottomBarY(), 90, 20, Component.translatable(key("open")), true,
+                this::openSelected));
         open.active = false;
-        addRenderableWidget(Button.builder(CommonComponents.GUI_BACK, button -> onClose())
-                .bounds(left + buttonW + 8, y, buttonW, 20).build());
-        if (root) {
-            addRenderableWidget(Button.builder(Component.translatable(key("log_out")), button -> logOut())
-                    .bounds(left + 2 * (buttonW + 8), y, buttonW, 20).build());
+        if (folderId == null) {
+            addRenderableWidget(new TextButton(x, bottomBarY(), 80, 20, Component.translatable(key("log_out")), false, this::logOut));
         }
         if (items == null && !loading) {
             load();
         }
     }
 
+    private void setStatus(Component message, boolean error) {
+        status = message;
+        statusIsError = error;
+    }
+
     private void load() {
         loading = true;
-        status = Component.translatable(key("loading"));
+        setStatus(Component.translatable(key("loading")), false);
         (folderId == null ? api.libraries(login.userId()) : api.children(login.userId(), folderId))
                 .whenComplete((result, error) -> minecraft.execute(() -> {
                     loading = false;
@@ -94,12 +113,12 @@ public final class JellyfinBrowseScreen extends Screen {
                     }
                     if (error != null) {
                         BlockCinema.LOGGER.warn("Couldn't list the Jellyfin library", error);
-                        status = Component.translatable(key("load_failed")).withStyle(ChatFormatting.RED);
+                        setStatus(Component.translatable(key("load_failed")), true);
                         return;
                     }
                     items = result;
                     result.forEach(item -> list.add(item));
-                    status = result.isEmpty() ? Component.translatable(key("empty")) : Component.empty();
+                    setStatus(result.isEmpty() ? Component.translatable(key("empty")) : Component.empty(), false);
                 }));
     }
 
@@ -114,7 +133,7 @@ public final class JellyfinBrowseScreen extends Screen {
             return;
         }
         open.active = false;
-        status = Component.translatable(key("starting"));
+        setStatus(Component.translatable(key("starting")), false);
         // Logins saved by older versions don't know the server's ID yet; it is what the TV shares.
         CompletableFuture<String> serverId = login.serverId().isEmpty()
                 ? api.serverId() : CompletableFuture.completedFuture(login.serverId());
@@ -123,7 +142,7 @@ public final class JellyfinBrowseScreen extends Screen {
                 BlockCinema.LOGGER.warn("Couldn't reach the Jellyfin server", error);
                 if (!closed) {
                     open.active = true;
-                    status = Component.translatable(key("play_failed")).withStyle(ChatFormatting.RED);
+                    setStatus(Component.translatable(key("play_failed")), true);
                 }
                 return;
             }
@@ -147,10 +166,12 @@ public final class JellyfinBrowseScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        graphics.drawCenteredString(font, title, width / 2, 12, 0xFFFFFF);
-        graphics.drawCenteredString(font, status, width / 2, height / 2, 0xAAAAAA);
+    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        super.render(g, mouseX, mouseY, partialTick);
+        if (!status.getString().isEmpty()) {
+            int y = list.children().isEmpty() ? list.getY() + list.getHeight() / 2 - 4 : bottomBarY() + 6;
+            g.drawCenteredString(font, status, panelX + panelW / 2, y, statusIsError ? Ui.DANGER : Ui.TEXT_DIM);
+        }
     }
 
     @Override
@@ -158,19 +179,9 @@ public final class JellyfinBrowseScreen extends Screen {
         closed = true;
     }
 
-    @Override
-    public void onClose() {
-        minecraft.setScreen(parent);
-    }
-
-    @Override
-    public boolean isPauseScreen() {
-        return false;
-    }
-
     private final class ItemList extends ObjectSelectionList<ItemList.Entry> {
         ItemList(Minecraft minecraft, int width, int height, int y) {
-            super(minecraft, width, height, y, 18);
+            super(minecraft, width, height, y, ROW_H);
         }
 
         void add(JellyfinApi.Item item) {
@@ -189,7 +200,25 @@ public final class JellyfinBrowseScreen extends Screen {
 
         @Override
         public int getRowWidth() {
-            return Math.min(400, width - 40);
+            return width - 14;
+        }
+
+        @Override
+        protected int getScrollbarPosition() {
+            return getX() + width - 6;
+        }
+
+        // The panel is the background: no dirt, separators or vanilla selection box.
+        @Override
+        protected void renderListBackground(GuiGraphics g) {
+        }
+
+        @Override
+        protected void renderListSeparators(GuiGraphics g) {
+        }
+
+        @Override
+        protected void renderSelection(GuiGraphics g, int top, int width, int height, int outerColor, int innerColor) {
         }
 
         final class Entry extends ObjectSelectionList.Entry<Entry> {
@@ -201,14 +230,21 @@ public final class JellyfinBrowseScreen extends Screen {
             }
 
             @Override
-            public void render(GuiGraphics graphics, int index, int top, int left, int width, int height, int mouseX,
+            public void render(GuiGraphics g, int index, int top, int left, int width, int height, int mouseX,
                     int mouseY, boolean hovering, float partialTick) {
-                String name = item.folder() ? item.name() + "/" : item.name();
-                graphics.drawString(font, font.plainSubstrByWidth(name, width - 50), left + 4, top + 4, 0xFFFFFF);
+                boolean selected = getSelected() == this;
+                if (selected || hovering) {
+                    Ui.round(g, left - 2, top - 1, width + 4, height + 1, selected ? Ui.ACCENT_SOFT : Ui.SURFACE_HOVER);
+                }
+                int mid = top + (height - font.lineHeight) / 2;
+                Ui.icon(g, item.folder() ? Icon.FOLDER : Icon.FILM, left + 3, top + (height - 12) / 2, 12,
+                        selected ? Ui.ACCENT_HOVER : Ui.TEXT_DIM);
                 String detail = item.resumeSeconds() > 0
                         ? Component.translatable(key("resume_at"), TimeBar.format(item.resumeSeconds())).getString()
                         : item.detail();
-                graphics.drawString(font, detail, left + width - 4 - font.width(detail), top + 4, 0x808080);
+                int detailW = font.width(detail);
+                g.drawString(font, font.plainSubstrByWidth(item.name(), width - 30 - detailW - 8), left + 21, mid, Ui.TEXT, false);
+                g.drawString(font, detail, left + width - 4 - detailW, mid, item.resumeSeconds() > 0 ? Ui.ACCENT_HOVER : Ui.TEXT_FAINT, false);
             }
 
             @Override

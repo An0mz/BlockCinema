@@ -8,76 +8,87 @@ import java.util.concurrent.TimeUnit;
 import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinApi;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinLogin;
-import net.minecraft.ChatFormatting;
+import dev.anomz.blockcinema.client.screen.ui.PanelScreen;
+import dev.anomz.blockcinema.client.screen.ui.TextButton;
+import dev.anomz.blockcinema.client.screen.ui.TextField;
+import dev.anomz.blockcinema.client.screen.ui.Ui;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
 /**
  * Logs in to the player's Jellyfin server with Quick Connect: the screen shows a code, the player
  * approves it in any other Jellyfin app, and no password is ever typed into Minecraft.
  */
-public final class JellyfinLoginScreen extends Screen {
-    private static final int WIDTH = 300;
+public final class JellyfinLoginScreen extends PanelScreen {
     private static final long POLL_SECONDS = 2;
     /** Jellyfin forgets Quick Connect codes after a while; stop asking well before that. */
     private static final long GIVE_UP_MILLIS = 5 * 60 * 1000;
+    private static final int CODE_BOX_H = 50;
 
-    private final Screen parent;
     private final BlockPos screen;
-    private EditBox server;
-    private Button connect;
+    private TextField server;
+    private TextButton connect;
     private String serverText = "";
     private Component status = Component.empty();
+    private boolean statusIsError;
     private String code;
     private boolean closed;
 
     public JellyfinLoginScreen(Screen parent, BlockPos screen) {
-        super(Component.translatable("service." + BlockCinema.MODID + ".jellyfin"));
-        this.parent = parent;
+        super(Component.translatable("service." + BlockCinema.MODID + ".jellyfin"), parent);
         this.screen = screen;
-    }
-
-    @Override
-    protected void init() {
-        closed = false;
-        int left = (width - WIDTH) / 2;
-        int top = height / 2 - 30;
-        server = new EditBox(font, left, top, WIDTH, 20, Component.translatable(key("server_hint")));
-        server.setMaxLength(256);
-        server.setHint(Component.translatable(key("server_hint")));
-        server.setValue(serverText);
-        server.setResponder(text -> serverText = text);
-        server.setEditable(code == null);
-        addRenderableWidget(server);
-        setInitialFocus(server);
-        int half = (WIDTH - 8) / 2;
-        connect = addRenderableWidget(Button.builder(Component.translatable(key("connect")), button -> connect())
-                .bounds(left, top + 28, half, 20).build());
-        connect.active = code == null;
-        addRenderableWidget(Button.builder(CommonComponents.GUI_BACK, button -> onClose())
-                .bounds(left + WIDTH - half, top + 28, half, 20).build());
+        subtitle = Component.translatable(key("subtitle"));
     }
 
     private static String key(String name) {
         return "screen." + BlockCinema.MODID + ".jellyfin." + name;
     }
 
+    @Override
+    protected int panelWidth() {
+        return 320;
+    }
+
+    @Override
+    protected int panelHeight() {
+        return Ui.HEADER + Ui.PAD + 20 + 22 + CODE_BOX_H + 18 + Ui.PAD;
+    }
+
+    @Override
+    protected void initContent() {
+        closed = false;
+        int x = contentLeft();
+        int w = contentWidth();
+        int y = contentTop();
+        int buttonW = 84;
+        server = addRenderableWidget(new TextField(x, y, w - buttonW - 6, 20, Component.translatable(key("server_hint"))));
+        server.setMaxLength(256);
+        server.setValue(serverText);
+        server.setResponder(text -> serverText = text);
+        server.setEditable(code == null);
+        setInitialFocus(server);
+        connect = addRenderableWidget(new TextButton(x + w - buttonW, y, buttonW, 20, Component.translatable(key("connect")), true, this::connect));
+        connect.active = code == null;
+    }
+
+    private void setStatus(Component message, boolean error) {
+        status = message;
+        statusIsError = error;
+    }
+
     private void connect() {
         Optional<String> address = JellyfinApi.normalizeServer(serverText);
         if (address.isEmpty()) {
-            status = Component.translatable(key("bad_server")).withStyle(ChatFormatting.RED);
+            setStatus(Component.translatable(key("bad_server")), true);
             return;
         }
         String deviceId = JellyfinLogin.savedDeviceId().orElseGet(() -> UUID.randomUUID().toString());
         JellyfinApi api = new JellyfinApi(address.get(), deviceId, JellyfinApi.appVersion(), null);
         connect.active = false;
-        status = Component.translatable(key("connecting"));
+        setStatus(Component.translatable(key("connecting")), false);
         api.serverName()
                 .thenCompose(name -> api.startQuickConnect())
                 .whenComplete((quickConnect, error) -> minecraft.execute(() -> {
@@ -87,12 +98,12 @@ public final class JellyfinLoginScreen extends Screen {
                     if (error != null) {
                         BlockCinema.LOGGER.warn("Jellyfin Quick Connect failed to start", error);
                         connect.active = true;
-                        status = Component.translatable(key("quick_connect_failed")).withStyle(ChatFormatting.RED);
+                        setStatus(Component.translatable(key("quick_connect_failed")), true);
                         return;
                     }
                     code = quickConnect.code();
                     server.setEditable(false);
-                    status = Component.translatable(key("enter_code"));
+                    setStatus(Component.translatable(key("enter_code")), false);
                     poll(api, quickConnect.secret(), Util.getMillis());
                 }));
     }
@@ -125,36 +136,34 @@ public final class JellyfinLoginScreen extends Screen {
         code = null;
         server.setEditable(true);
         connect.active = true;
-        status = message.copy().withStyle(ChatFormatting.RED);
+        setStatus(message, true);
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        graphics.drawCenteredString(font, title, width / 2, height / 2 - 50, 0xFFFFFF);
-        graphics.drawCenteredString(font, status, width / 2, height / 2 + 26, 0xAAAAAA);
-        if (code != null) {
-            graphics.pose().pushPose();
-            graphics.pose().translate(width / 2f, height / 2f + 44, 0);
-            graphics.pose().scale(3, 3, 1);
-            graphics.drawCenteredString(font, code, 0, 0, 0xFFFFFF);
-            graphics.pose().popPose();
-            graphics.drawCenteredString(font, Component.translatable(key("code_help")), width / 2, height / 2 + 80, 0xAAAAAA);
+    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        super.render(g, mouseX, mouseY, partialTick);
+        int x = contentLeft();
+        int w = contentWidth();
+        int y = contentTop() + 20 + 7;
+        g.drawString(font, status, x, y, statusIsError ? Ui.DANGER : Ui.TEXT_DIM, false);
+        int boxY = y + 15;
+        if (code == null) {
+            return;
         }
+        Ui.box(g, x, boxY, w, CODE_BOX_H, Ui.SURFACE, Ui.ACCENT);
+        // The code, big and spaced out so it's easy to read off.
+        String spaced = String.join(" ", code.split(""));
+        g.pose().pushPose();
+        g.pose().translate(x + w / 2f, boxY + CODE_BOX_H / 2f - 10, 0);
+        g.pose().scale(2.5f, 2.5f, 1);
+        g.drawString(font, spaced, -font.width(spaced) / 2, 0, Ui.TEXT, false);
+        g.pose().popPose();
+        Component help = Component.translatable(key("code_help"));
+        g.drawString(font, help, x + (w - font.width(help)) / 2, boxY + CODE_BOX_H + 5, Ui.TEXT_DIM, false);
     }
 
     @Override
     public void removed() {
         closed = true;
-    }
-
-    @Override
-    public void onClose() {
-        minecraft.setScreen(parent);
-    }
-
-    @Override
-    public boolean isPauseScreen() {
-        return false;
     }
 }

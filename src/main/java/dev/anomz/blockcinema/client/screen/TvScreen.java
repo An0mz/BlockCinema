@@ -3,128 +3,158 @@ package dev.anomz.blockcinema.client.screen;
 import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.TvServerConfig;
 import dev.anomz.blockcinema.TvService;
+import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.client.browser.VideoLinks;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinLogin;
+import dev.anomz.blockcinema.client.screen.ui.Icon;
+import dev.anomz.blockcinema.client.screen.ui.IconButton;
+import dev.anomz.blockcinema.client.screen.ui.PanelScreen;
+import dev.anomz.blockcinema.client.screen.ui.ServiceTile;
+import dev.anomz.blockcinema.client.screen.ui.Ui;
+import dev.anomz.blockcinema.client.screen.ui.UiSlider;
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.AbstractSliderButton;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.Tooltip;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 
-/** The TV's menu: one tile per service and a power button, nothing else (no address bar). */
-public final class TvScreen extends Screen {
-    private static final int TILE_WIDTH = 120;
-    private static final int TILE_HEIGHT = 40;
+/**
+ * The TV's menu: what's on with media controls, and one card per service. Nothing else: there is no
+ * address bar.
+ */
+public final class TvScreen extends PanelScreen {
+    private static final int WIDTH = 300;
+    private static final int CARD_H = 68;
+    private static final int TILE_H = 40;
     private static final int GAP = 8;
-    private static final int COLUMNS = 2;
-    private static final int CONTROL_ROWS = 4;
     private static final int SKIP_SECONDS = 10;
 
     private final BlockPos screen;
     private TimeBar timeBar;
+    private VolumeSlider volume;
+    private boolean builtOn;
+    private float volumeBeforeMute = 1;
+    private int cardY;
+    private int sectionY;
+    private int statusY;
     private Component status = Component.empty();
-    private int gridTop;
-    private int gridBottom;
 
     /** {@code screen} is the origin of the clicked TV's screen (see {@code TvLayout}). */
     public TvScreen(BlockPos screen) {
-        super(Component.translatable("screen." + BlockCinema.MODID + ".tv"));
+        super(Component.translatable(key("tv")), null);
         this.screen = screen;
-    }
-
-    @Override
-    protected void init() {
-        TvService[] services = TvService.values();
-        int rows = (services.length + COLUMNS - 1) / COLUMNS;
-        int gridW = COLUMNS * TILE_WIDTH + (COLUMNS - 1) * GAP;
-        int gridH = rows * TILE_HEIGHT + (rows - 1) * GAP;
-        int left = (width - gridW) / 2;
-        boolean playing = TvRemote.source(screen) != null;
-        // Tiles and, while playing, the controls under them, centered together.
-        int controlsH = playing ? GAP + CONTROL_ROWS * 20 + (CONTROL_ROWS - 1) * 4 : 0;
-        int top = Math.max(24, (height - gridH - controlsH) / 2);
-        gridTop = top;
-        gridBottom = top + gridH;
-        for (int i = 0; i < services.length; i++) {
-            TvService service = services[i];
-            int x = left + i % COLUMNS * (TILE_WIDTH + GAP);
-            int y = top + i / COLUMNS * (TILE_HEIGHT + GAP);
-            Button tile = addRenderableWidget(Button.builder(Component.translatable(service.translationKey()), button -> open(service))
-                    .bounds(x, y, TILE_WIDTH, TILE_HEIGHT).build());
-            // The server's settings (synced to this client); the server checks them again.
-            tile.active = TvServerConfig.enabled(service);
-            if (!tile.active) {
-                tile.setTooltip(Tooltip.create(Component.translatable(key("service_disabled"))));
-            }
-        }
-        if (playing) {
-            addControls(left, gridW);
-        }
-    }
-
-    /** Below the tiles while something plays: play/pause, fullscreen, the TV's volume and turning it off. */
-    private void addControls(int left, int gridW) {
-        int half = (gridW - GAP) / 2;
-        int y = gridBottom + GAP;
-        addRenderableWidget(Button.builder(Component.translatable(key("play_pause")), button -> TvRemote.togglePause(screen))
-                .bounds(left, y, half, 20).build());
-        Button fullscreen = addRenderableWidget(Button.builder(Component.translatable(key("fullscreen")),
-                button -> minecraft.setScreen(new TvFullscreenScreen(this, screen)))
-                .bounds(left + gridW - half, y, half, 20).build());
-        // Someone else's Jellyfin has no picture here.
-        fullscreen.active = TvPlayers.isPlaying(screen);
-        y += 20 + 4;
-        int skipW = 40;
-        addRenderableWidget(Button.builder(Component.literal("-" + SKIP_SECONDS + "s"), button -> TvRemote.skip(screen, -SKIP_SECONDS))
-                .bounds(left, y, skipW, 20).build());
-        timeBar = addRenderableWidget(new TimeBar(left + skipW + 4, y, gridW - 2 * (skipW + 4), screen));
-        addRenderableWidget(Button.builder(Component.literal("+" + SKIP_SECONDS + "s"), button -> TvRemote.skip(screen, SKIP_SECONDS))
-                .bounds(left + gridW - skipW, y, skipW, 20).build());
-        y += 20 + 4;
-        addRenderableWidget(new VolumeSlider(left, y, gridW, TvPlayers.volume(screen)));
-        y += 20 + 4;
-        addRenderableWidget(Button.builder(Component.translatable(key("turn_off")), button -> {
-            TvRemote.turnOff(screen);
-            onClose();
-        }).bounds(left, y, gridW, 20).build());
-        gridBottom = y + 20;
-    }
-
-    @Override
-    public void tick() {
-        if (timeBar != null) {
-            timeBar.refresh();
-        }
     }
 
     private static String key(String name) {
         return "screen." + BlockCinema.MODID + "." + name;
     }
 
-    private final class VolumeSlider extends AbstractSliderButton {
-        VolumeSlider(int x, int y, int width, double value) {
-            super(x, y, width, 20, Component.empty(), value);
-            updateMessage();
-        }
+    @Override
+    protected int panelWidth() {
+        return WIDTH;
+    }
 
-        @Override
-        protected void updateMessage() {
-            setMessage(Component.translatable(key("volume"), Math.round(value * 100)));
-        }
+    @Override
+    protected int panelHeight() {
+        boolean on = TvRemote.source(screen) != null;
+        return Ui.HEADER + Ui.PAD + (on ? CARD_H + 12 : 0) + 14 + 2 * TILE_H + GAP + 8 + 10 + Ui.PAD;
+    }
 
-        @Override
-        protected void applyValue() {
-            TvPlayers.setVolume(screen, (float) value);
+    @Override
+    protected void initContent() {
+        TvSource source = TvRemote.source(screen);
+        builtOn = source != null;
+        subtitle = source == null ? Component.translatable(key("off"))
+                : Component.translatable(key("now_playing"), Component.translatable(source.service().translationKey()), source.ownerName());
+        int x = contentLeft();
+        int w = contentWidth();
+        int y = contentTop();
+        timeBar = null;
+        if (source != null) {
+            cardY = y;
+            addControls(x, y, w);
+            y += CARD_H + 12;
+        }
+        sectionY = y;
+        y += 14;
+        int tileW = (w - GAP) / 2;
+        TvService[] services = TvService.values();
+        for (int i = 0; i < services.length; i++) {
+            TvService service = services[i];
+            boolean enabled = TvServerConfig.enabled(service);
+            ServiceTile tile = addRenderableWidget(new ServiceTile(x + i % 2 * (tileW + GAP), y + i / 2 * (TILE_H + GAP), tileW, TILE_H,
+                    icon(service), Component.translatable(service.translationKey()),
+                    // The server's settings (synced to this client); the server checks them again.
+                    Component.translatable(enabled ? key("tile." + service.id()) : key("service_disabled")), () -> open(service)));
+            tile.active = enabled;
+        }
+        statusY = y + 2 * TILE_H + GAP + 8;
+    }
+
+    private static Icon icon(TvService service) {
+        return switch (service) {
+            case YOUTUBE -> Icon.VIDEO;
+            case TWITCH -> Icon.LIVE;
+            case JELLYFIN -> Icon.LIBRARY;
+            case DIRECT_LINK -> Icon.LINK;
+        };
+    }
+
+    /** The "now playing" card: seek bar and times, then skip, play/pause, volume, fullscreen and power. */
+    private void addControls(int x, int y, int w) {
+        timeBar = addRenderableWidget(new TimeBar(x + 6, y + 8, w - 12, screen));
+        int rowY = y + 38;
+        int mid = x + w / 2;
+        addRenderableWidget(new IconButton(mid - 12, rowY, 24, () -> paused() ? Icon.PLAY : Icon.PAUSE,
+                Component.translatable(key("play_pause")), IconButton.Style.PRIMARY, () -> TvRemote.togglePause(screen)));
+        addRenderableWidget(new IconButton(mid - 12 - 6 - 20, rowY + 2, 20, Icon.BACK,
+                Component.translatable(key("skip_back"), SKIP_SECONDS), IconButton.Style.GHOST, () -> TvRemote.skip(screen, -SKIP_SECONDS)));
+        addRenderableWidget(new IconButton(mid + 12 + 6, rowY + 2, 20, Icon.FORWARD,
+                Component.translatable(key("skip_forward"), SKIP_SECONDS), IconButton.Style.GHOST, () -> TvRemote.skip(screen, SKIP_SECONDS)));
+        addRenderableWidget(new IconButton(x + 6, rowY + 2, 20, () -> TvPlayers.volume(screen) <= 0 ? Icon.MUTE : Icon.VOLUME,
+                Component.translatable(key("mute")), IconButton.Style.GHOST, this::toggleMute));
+        volume = addRenderableWidget(new VolumeSlider(x + 28, rowY + 6, 62, TvPlayers.volume(screen)));
+        IconButton fullscreen = addRenderableWidget(new IconButton(x + w - 6 - 20 - 4 - 20, rowY + 2, 20, Icon.FULLSCREEN,
+                Component.translatable(key("fullscreen")), IconButton.Style.GHOST, () -> minecraft.setScreen(new TvFullscreenScreen(this, screen))));
+        // Someone else's Jellyfin has no picture here.
+        fullscreen.active = TvPlayers.isPlaying(screen);
+        addRenderableWidget(new IconButton(x + w - 6 - 20, rowY + 2, 20, Icon.POWER,
+                Component.translatable(key("turn_off")), IconButton.Style.DANGER, () -> {
+                    TvRemote.turnOff(screen);
+                    minecraft.setScreen(null);
+                }));
+    }
+
+    private boolean paused() {
+        TvSource source = TvRemote.source(screen);
+        return source == null || source.paused();
+    }
+
+    private void toggleMute() {
+        float now = TvPlayers.volume(screen);
+        if (now > 0) {
+            volumeBeforeMute = now;
+            TvPlayers.setVolume(screen, 0);
+        } else {
+            TvPlayers.setVolume(screen, volumeBeforeMute);
+        }
+        volume.show(TvPlayers.volume(screen));
+    }
+
+    @Override
+    public void tick() {
+        // Turned on or off meanwhile (maybe by another player): the controls come or go.
+        if ((TvRemote.source(screen) != null) != builtOn) {
+            rebuildWidgets();
+        }
+        if (timeBar != null) {
+            timeBar.refresh();
         }
     }
 
     private void open(TvService service) {
         if (!TvPlayers.ready()) {
-            status = Component.translatable("screen." + BlockCinema.MODID + ".browser_not_ready");
+            status = Component.translatable(key("browser_not_ready"));
             return;
         }
         switch (service) {
@@ -141,14 +171,54 @@ public final class TvScreen extends Screen {
     }
 
     @Override
-    public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        super.render(graphics, mouseX, mouseY, partialTick);
-        graphics.drawCenteredString(font, title, width / 2, gridTop - 20, 0xFFFFFF);
-        graphics.drawCenteredString(font, status, width / 2, gridBottom + 12, 0xAAAAAA);
+    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        super.renderBackground(g, mouseX, mouseY, partialTick);
+        if (timeBar != null) {
+            Ui.box(g, contentLeft(), cardY, contentWidth(), CARD_H, Ui.SURFACE, Ui.DIVIDER);
+        }
     }
 
     @Override
-    public boolean isPauseScreen() {
-        return false;
+    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        super.render(g, mouseX, mouseY, partialTick);
+        int x = contentLeft();
+        int w = contentWidth();
+        if (timeBar != null) {
+            int timeY = cardY + 23;
+            TvPlayers.Position position = TvPlayers.position(screen);
+            if (position != null && !position.seekable()) {
+                // Live: a small badge instead of times.
+                Component live = Component.translatable(key("live"));
+                Ui.round(g, x + 9, timeY - 2, font.width(live) + 8, font.lineHeight + 3, Ui.ACCENT);
+                g.drawString(font, live, x + 13, timeY, 0xFFFFFFFF, false);
+            } else {
+                double shown = timeBar.shownSeconds();
+                String left = shown < 0 ? "--:--" : TimeBar.format(shown);
+                String right = position == null ? "--:--" : TimeBar.format(position.length());
+                g.drawString(font, left, x + 10, timeY, Ui.TEXT_DIM, false);
+                g.drawString(font, right, x + w - 10 - font.width(right), timeY, Ui.TEXT_DIM, false);
+            }
+        }
+        g.drawString(font, Component.translatable(key("watch")), x, sectionY, Ui.TEXT_FAINT, false);
+        if (!status.getString().isEmpty()) {
+            g.drawCenteredString(font, status, panelX + panelW / 2, statusY, Ui.TEXT_DIM);
+        }
+    }
+
+    private final class VolumeSlider extends UiSlider {
+        VolumeSlider(int x, int y, int width, double value) {
+            super(x, y, width, 12, value);
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            setMessage(Component.translatable(key("volume"), Math.round(value * 100)));
+        }
+
+        @Override
+        protected void applyValue() {
+            TvPlayers.setVolume(screen, (float) value);
+        }
     }
 }
