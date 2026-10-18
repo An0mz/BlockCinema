@@ -1,5 +1,7 @@
 package dev.anomz.blockcinema.client.browser;
 
+import java.util.Locale;
+
 import org.cef.CefClient;
 import org.jetbrains.annotations.Nullable;
 
@@ -12,11 +14,16 @@ import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.Options;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * The browsers playing on TV screens, one per screen, keyed by the screen's origin (its bottom-left TV
@@ -32,7 +39,27 @@ public final class TvPlayers {
     private static MCEFClient client;
     private static int nextTextureId;
 
-    private record Playing(MCEFBrowser browser, ResourceLocation texture) {
+    /** State updates sent at least this often (in checks), in case the page wasn't ready for the last one. */
+    private static final int STATE_RESEND_INTERVAL = 8;
+    /**
+     * A screen not seen from the front for this long counts as out of sight. YouTube's terms don't allow
+     * playing in a player the user can't see, so our YouTube page pauses until it is seen again.
+     */
+    private static final long OUT_OF_SIGHT_MILLIS = 3000;
+
+    private static final class Playing {
+        final MCEFBrowser browser;
+        final ResourceLocation texture;
+        float volume = -1;
+        boolean visible = true;
+        int checksSinceStateSent;
+        /** Written by the renderer, read by the tick; both on the client thread. */
+        long lastSeenMillis = Util.getMillis();
+
+        Playing(MCEFBrowser browser, ResourceLocation texture) {
+            this.browser = browser;
+            this.texture = texture;
+        }
     }
 
     private TvPlayers() {
@@ -47,7 +74,9 @@ public final class TvPlayers {
     public static void play(BlockPos origin, String url) {
         Playing playing = PLAYING.get(origin.asLong());
         if (playing != null) {
-            playing.browser().loadURL(url);
+            playing.browser.loadURL(url);
+            playing.volume = -1;
+            playing.lastSeenMillis = Util.getMillis();
             return;
         }
         MCEFBrowser browser = new MCEFBrowser(client(), url, false);
@@ -82,24 +111,65 @@ public final class TvPlayers {
     @Nullable
     public static ResourceLocation texture(BlockPos origin) {
         Playing playing = PLAYING.get(origin.asLong());
-        return playing == null || playing.browser().getRenderer().getTextureID() == 0 ? null : playing.texture();
+        return playing == null || playing.browser.getRenderer().getTextureID() == 0 ? null : playing.texture;
     }
 
-    /** Stops screens that were broken, changed shape or are too far away. Run about once a second. */
+    /** Called while drawing a screen seen from the front. */
+    public static void markSeen(BlockPos origin) {
+        Playing playing = PLAYING.get(origin.asLong());
+        if (playing != null) {
+            playing.lastSeenMillis = Util.getMillis();
+        }
+    }
+
+    /**
+     * Stops screens that were broken, changed shape or are too far away, sets each screen's volume
+     * from how far the player is from it, and tells it whether it is in sight. Run a few times a second.
+     */
     public static void tick(ClientLevel level, Player player) {
         if (PLAYING.isEmpty()) {
             return;
         }
+        Options options = Minecraft.getInstance().options;
+        float gain = options.getSoundSourceVolume(SoundSource.MASTER) * options.getSoundSourceVolume(SoundSource.RECORDS);
+        Vec3 ear = player.getEyePosition();
+        long now = Util.getMillis();
         PLAYING.long2ObjectEntrySet().removeIf(entry -> {
             BlockPos origin = BlockPos.of(entry.getLongKey());
-            boolean keep = origin.distToCenterSqr(player.position()) < MAX_DISTANCE * MAX_DISTANCE
-                    && level.getBlockEntity(origin) instanceof TvBlockEntity tv
-                    && isOrigin(tv.layout(level.getGameTime()), origin);
-            if (!keep) {
+            TvLayout layout = origin.distToCenterSqr(player.position()) < MAX_DISTANCE * MAX_DISTANCE
+                    && level.getBlockEntity(origin) instanceof TvBlockEntity tv ? tv.layout(level.getGameTime()) : null;
+            if (layout == null || !isOrigin(layout, origin)) {
                 close(entry.getValue());
+                return true;
             }
-            return !keep;
+            Playing playing = entry.getValue();
+            updateState(playing, gain * TvVolume.falloff(distance(layout, ear)),
+                    now - playing.lastSeenMillis < OUT_OF_SIGHT_MILLIS);
+            return false;
         });
+    }
+
+    private static double distance(TvLayout layout, Vec3 ear) {
+        BlockPos far = layout.origin().relative(layout.right(), layout.cols() - 1).above(layout.rows() - 1);
+        AABB box = new AABB(Vec3.atLowerCornerOf(layout.origin()), Vec3.atLowerCornerOf(far).add(1, 1, 1));
+        return TvVolume.distanceToBox(ear.x, ear.y, ear.z, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
+    }
+
+    /**
+     * Hands the volume and whether the screen is in sight to our page, which applies them with the
+     * service player's own controls.
+     */
+    private static void updateState(Playing playing, float volume, boolean visible) {
+        if (Math.abs(volume - playing.volume) < 0.005f && visible == playing.visible
+                && ++playing.checksSinceStateSent < STATE_RESEND_INTERVAL) {
+            return;
+        }
+        playing.volume = volume;
+        playing.visible = visible;
+        playing.checksSinceStateSent = 0;
+        playing.browser.executeJavaScript(
+                String.format(Locale.ROOT, "window.blockcinemaState && blockcinemaState(%.3f, %b)", volume, visible),
+                playing.browser.getURL(), 0);
     }
 
     private static boolean isOrigin(TvLayout layout, BlockPos origin) {
@@ -107,8 +177,8 @@ public final class TvPlayers {
     }
 
     private static void close(Playing playing) {
-        playing.browser().close();
-        Minecraft.getInstance().getTextureManager().release(playing.texture());
+        playing.browser.close();
+        Minecraft.getInstance().getTextureManager().release(playing.texture);
     }
 
     /**

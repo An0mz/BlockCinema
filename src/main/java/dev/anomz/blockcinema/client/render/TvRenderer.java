@@ -9,6 +9,7 @@ import com.mojang.math.Axis;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -18,6 +19,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.level.block.HorizontalDirectionalBlock;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Draws this TV's slice of its screen's picture, letterboxed inside the bezel around the whole screen.
@@ -43,6 +45,10 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         if (layout.invalid()) {
             return;
         }
+        Direction facing = state.getValue(HorizontalDirectionalBlock.FACING);
+        if (inFront(tv, facing)) {
+            TvPlayers.markSeen(layout.origin());
+        }
 
         // Picture rectangle in screen coordinates (blocks; x from the viewer's left, y up), letterboxed.
         float areaW = layout.cols() - 2 * BEZEL;
@@ -67,7 +73,6 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         float vTop = (picY0 + picH - y1) / picH;
         float vBottom = (picY0 + picH - y0) / picH;
 
-        Direction facing = state.getValue(HorizontalDirectionalBlock.FACING);
         poseStack.pushPose();
         poseStack.translate(0.5, 0.5, 0.5);
         // Front face at -Z, the viewer's left is +X.
@@ -84,6 +89,13 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         vertex(consumer, pose, right, bottom, u1, vBottom);
         vertex(consumer, pose, right, top, u1, vTop);
         poseStack.popPose();
+    }
+
+    /** Whether the camera is on the screen side of this TV's front face. */
+    private static boolean inFront(TvBlockEntity tv, Direction facing) {
+        Vec3 camera = Minecraft.getInstance().gameRenderer.getMainCamera().getPosition();
+        Vec3 toCamera = camera.subtract(Vec3.atCenterOf(tv.getBlockPos()));
+        return toCamera.x * facing.getStepX() + toCamera.z * facing.getStepZ() > 0.5;
     }
 
     private static void vertex(VertexConsumer consumer, Matrix4f pose, float x, float y, float u, float v) {

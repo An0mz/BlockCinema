@@ -37,7 +37,7 @@ public final class BlockCinemaClient {
 
     private static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.level != null && minecraft.player != null && minecraft.level.getGameTime() % 20 == 0) {
+        if (minecraft.level != null && minecraft.player != null && minecraft.level.getGameTime() % 5 == 0) {
             TvPlayers.tick(minecraft.level, minecraft.player);
         }
     }

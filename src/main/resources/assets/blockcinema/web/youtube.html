@@ -17,6 +17,33 @@
   var video = /^[A-Za-z0-9_-]{11}$/.test(params.get('v') || '') ? params.get('v') : null;
   var list = /^[A-Za-z0-9_-]{2,64}$/.test(params.get('list') || '') ? params.get('list') : null;
   var player;
+  var ready = false;
+  var volume = 1;
+  var visible = true;
+  var pausedOutOfSight = false;
+
+  // Called by the mod a few times a second: volume 0 to 1 from the player's distance, and whether the TV
+  // is in sight. YouTube's terms don't allow playing in a player the user can't see, so it pauses then,
+  // and resumes only a pause it made itself.
+  window.blockcinemaState = function (newVolume, newVisible) {
+    volume = newVolume;
+    visible = newVisible;
+    if (ready) {
+      apply();
+    }
+  };
+
+  function apply() {
+    player.setVolume(Math.round(volume * 100));
+    var state = player.getPlayerState();
+    if (!visible && (state === YT.PlayerState.PLAYING || state === YT.PlayerState.BUFFERING)) {
+      player.pauseVideo();
+      pausedOutOfSight = true;
+    } else if (visible && pausedOutOfSight) {
+      pausedOutOfSight = false;
+      player.playVideo();
+    }
+  }
 
   function onYouTubeIframeAPIReady() {
     var vars = { autoplay: 1, playsinline: 1, rel: 0, origin: location.origin };
@@ -29,7 +56,17 @@
       height: '100%',
       videoId: video || undefined,
       playerVars: vars,
-      events: { onReady: function (event) { event.target.playVideo(); } }
+      events: {
+        onReady: function (event) {
+          ready = true;
+          event.target.setVolume(Math.round(volume * 100));
+          if (visible) {
+            event.target.playVideo();
+          } else {
+            pausedOutOfSight = true;
+          }
+        }
+      }
     });
   }
 </script>
