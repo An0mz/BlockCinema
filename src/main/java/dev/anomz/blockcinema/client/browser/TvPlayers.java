@@ -14,10 +14,12 @@ import com.cinemamod.mcef.MCEFBrowser;
 import com.cinemamod.mcef.MCEFClient;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
+import dev.anomz.blockcinema.client.jellyfin.JellyfinWatch;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -57,11 +59,8 @@ public final class TvPlayers {
     /** At most one catch-up jump this often, so a buffering video isn't pushed around. */
     private static final long SEEK_SYNC_MILLIS = 5000;
     private static final long PAUSE_SYNC_MILLIS = 1500;
-    /** A Jellyfin video waits this long for the server to agree before it is dropped. */
-    private static final long PENDING_MILLIS = 10_000;
 
     private static final Long2ObjectMap<Playing> PLAYING = new Long2ObjectOpenHashMap<>();
-    private static final Long2ObjectMap<PendingJellyfin> PENDING_JELLYFIN = new Long2ObjectOpenHashMap<>();
     private static final WatchPositions POSITIONS =
             new WatchPositions(FMLPaths.CONFIGDIR.get().resolve(BlockCinema.MODID).resolve("positions.json"));
     private static final Consumer<Position> NOTHING = position -> {
@@ -77,14 +76,10 @@ public final class TvPlayers {
         }
     }
 
-    /** A Jellyfin video this player asked the server to show; only this client can play it. */
-    private record PendingJellyfin(String page, Consumer<Position> onStop, long createdMillis) {
-    }
-
     private static final class Playing {
         final MCEFBrowser browser;
         final ResourceLocation texture;
-        /** What is loaded: the shared page, or this player's Jellyfin page. */
+        /** What is loaded: the shared page (for Jellyfin, which video on which server). */
         String key;
         /** Key for {@link WatchPositions}, or null when the service keeps the position itself. */
         @Nullable
@@ -137,17 +132,6 @@ public final class TvPlayers {
         return POSITIONS.get(page);
     }
 
-    /**
-     * This player's Jellyfin video for the screen at {@code origin}, played once the server agrees (it
-     * only knows a Jellyfin video is on, not which). {@code onStop} gets the last position.
-     */
-    public static void expectJellyfin(BlockPos origin, String page, Consumer<Position> onStop) {
-        PendingJellyfin old = PENDING_JELLYFIN.put(origin.asLong(), new PendingJellyfin(page, onStop, Util.getMillis()));
-        if (old != null) {
-            old.onStop().accept(new Position(0, 0, true));
-        }
-    }
-
     /** {@code pageUrl} starting {@code seconds} in; our pages read the start from the fragment. */
     public static String withStart(String pageUrl, double seconds) {
         if (seconds < 1) {
@@ -163,8 +147,7 @@ public final class TvPlayers {
     public static void stopAll() {
         PLAYING.values().forEach(TvPlayers::close);
         PLAYING.clear();
-        PENDING_JELLYFIN.values().forEach(pending -> pending.onStop().accept(new Position(0, 0, true)));
-        PENDING_JELLYFIN.clear();
+        JellyfinWatch.clear();
     }
 
     /** The picture for the screen at {@code origin}, or null when nothing is showing there yet. */
@@ -235,13 +218,6 @@ public final class TvPlayers {
             TvPlayers.gamePaused = gamePaused;
             PLAYING.values().forEach(playing -> playing.lastPauseSyncMillis = 0);
         }
-        PENDING_JELLYFIN.long2ObjectEntrySet().removeIf(entry -> {
-            boolean stale = now - entry.getValue().createdMillis() > PENDING_MILLIS && !PLAYING.containsKey(entry.getLongKey());
-            if (stale) {
-                entry.getValue().onStop().accept(new Position(0, 0, true));
-            }
-            return stale;
-        });
         LongSet wanted = new LongOpenHashSet();
         if (ready()) {
             List<TvBlockEntity> tvs = new ArrayList<>(TvBlockEntity.CLIENT_PLAYING);
@@ -269,40 +245,28 @@ public final class TvPlayers {
         if (layout.invalid() || !layout.origin().equals(origin)) {
             return;
         }
-        String page;
-        String key;
-        String resumeKey;
-        Consumer<Position> onStop;
-        if (source.service() == TvService.JELLYFIN) {
-            PendingJellyfin pending = PENDING_JELLYFIN.get(origin.asLong());
-            Playing current = PLAYING.get(origin.asLong());
-            boolean mine = source.owner().equals(player.getUUID());
-            if (!mine || pending == null && (current == null || !current.key.startsWith("jellyfin:"))) {
-                // Someone else's Jellyfin, or ours from before a relog: only a card is shown.
-                return;
-            }
-            if (pending == null) {
-                wanted.add(origin.asLong());
-                syncState(current, source, level.getGameTime(), now);
-                updateVolume(current, layout, player, now);
-                return;
-            }
-            PENDING_JELLYFIN.remove(origin.asLong());
-            page = pending.page();
-            key = "jellyfin:" + pending.page();
-            resumeKey = null;
-            onStop = pending.onStop();
-        } else {
-            page = source.page();
-            key = page;
-            resumeKey = page;
-            onStop = NOTHING;
-        }
-        wanted.add(origin.asLong());
+        String key = source.page();
         Playing playing = PLAYING.get(origin.asLong());
         if (playing == null || !playing.key.equals(key)) {
+            String page = key;
+            String resumeKey = key;
+            Consumer<Position> onStop = NOTHING;
+            if (source.service() == TvService.JELLYFIN) {
+                // Streamed with this player's own Jellyfin login, once that's set up; until then (or without
+                // a login on that server) the screen shows who is watching.
+                String[] ids = TvPageRules.jellyfinIds(key);
+                JellyfinWatch.Stream stream = ids != null && JellyfinWatch.canWatch(ids[0]) ? JellyfinWatch.take(key, ids[1]) : null;
+                if (stream == null) {
+                    return;
+                }
+                page = stream.page();
+                // Jellyfin keeps the watch position itself.
+                resumeKey = null;
+                onStop = stream.onStop();
+            }
             playing = start(origin, playing, withStart(page, source.position(level.getGameTime())), key, resumeKey, onStop);
         }
+        wanted.add(origin.asLong());
         syncState(playing, source, level.getGameTime(), now);
         updateVolume(playing, layout, player, now);
     }

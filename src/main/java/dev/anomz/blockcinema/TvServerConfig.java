@@ -19,8 +19,9 @@ public final class TvServerConfig {
             .comment("Allow Twitch on TVs (official embedded player).")
             .define("enableTwitch", true);
     private static final ModConfigSpec.BooleanValue JELLYFIN = BUILDER
-            .comment("Allow players to watch their own Jellyfin server on TVs. Only the player who logged in sees",
-                    "the video; others see who is watching. Logins never go through this server.")
+            .comment("Allow players to watch their own Jellyfin server on TVs. Only which video on which server is",
+                    "shared: players logged in to that Jellyfin server watch along with their own login, others see",
+                    "who is watching. Logins and video never go through this server.")
             .define("enableJellyfin", true);
     private static final ModConfigSpec.BooleanValue DIRECT_LINKS = BUILDER
             .comment("Allow playing direct video links (video files and .m3u8 streams) that everybody nearby sees.")

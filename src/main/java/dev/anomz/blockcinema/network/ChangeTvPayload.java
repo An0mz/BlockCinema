@@ -17,7 +17,7 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
  * Client to server: "play this on the screen at {@code origin}, starting {@code startSeconds} in".
- * {@code page} is one of our page URLs, or empty for Jellyfin (only its owner plays it).
+ * {@code page} is one of our page URLs, or for Jellyfin which video on which server (see {@code TvPageRules}).
  */
 public record ChangeTvPayload(BlockPos origin, int service, String page, double startSeconds) implements CustomPacketPayload {
     public static final Type<ChangeTvPayload> TYPE =
@@ -52,15 +52,12 @@ public record ChangeTvPayload(BlockPos origin, int service, String page, double 
         if (tv == null || !TvRequests.mayControl(player, tv.source())) {
             return;
         }
-        tv.setSource(new TvSource(service, service == TvService.JELLYFIN ? null : payload.page(), player.getUUID(),
+        tv.setSource(new TvSource(service, payload.page(), player.getUUID(),
                 player.getGameProfile().getName(), player.level().getGameTime(), TvRequests.seconds(payload.startSeconds()),
                 false));
     }
 
     private static boolean pageAllowed(TvService service, String page) {
-        if (service == TvService.JELLYFIN) {
-            return page.isEmpty();
-        }
         if (!TvPageRules.valid(service, page)) {
             return false;
         }

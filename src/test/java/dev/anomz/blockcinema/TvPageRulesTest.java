@@ -41,6 +41,21 @@ class TvPageRulesTest {
     }
 
     @Test
+    void jellyfinSharesOnlyIds() {
+        String server = "0123456789abcdef0123456789abcdef";
+        String item = "f27caa37e5142225cceded48f6553502";
+        String page = TvPageRules.jellyfinPage(server.toUpperCase(), item);
+        assertEquals("jellyfin:" + server + ":" + item, page);
+        assertTrue(TvPageRules.valid(TvService.JELLYFIN, page));
+        assertEquals(item, TvPageRules.jellyfinIds(page)[1]);
+        assertFalse(TvPageRules.valid(TvService.YOUTUBE, page));
+        assertFalse(TvPageRules.valid(TvService.JELLYFIN, "jellyfin:" + server));
+        assertFalse(TvPageRules.valid(TvService.JELLYFIN, page + ":x"));
+        assertFalse(TvPageRules.valid(TvService.JELLYFIN, "jellyfin:http://192.168.1.5:8096:" + item));
+        assertFalse(TvPageRules.valid(TvService.JELLYFIN, ""));
+    }
+
+    @Test
     void linkHostList() {
         assertTrue(TvPageRules.hostAllowed(List.of(), "anything.com"));
         assertTrue(TvPageRules.hostAllowed(List.of("example.com"), "cdn.Example.com"));

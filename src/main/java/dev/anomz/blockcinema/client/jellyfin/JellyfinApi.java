@@ -19,6 +19,9 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+import dev.anomz.blockcinema.BlockCinema;
+import net.neoforged.fml.ModList;
+
 /**
  * The few Jellyfin REST calls the TV needs, all made from this computer straight to the player's own
  * server (never through the Minecraft server). Works with Jellyfin 10.9 and later, including 12.
@@ -56,6 +59,12 @@ public final class JellyfinApi {
         this.deviceId = deviceId;
         this.version = version;
         this.token = token;
+    }
+
+    /** The mod version, which Jellyfin shows in its device list. */
+    public static String appVersion() {
+        return ModList.get().getModContainerById(BlockCinema.MODID)
+                .map(container -> container.getModInfo().getVersion().toString()).orElse("0");
     }
 
     public static JellyfinApi of(JellyfinLogin login, String version) {
@@ -132,9 +141,14 @@ public final class JellyfinApi {
         return post("/Users/AuthenticateWithQuickConnect", body).thenApply(json -> {
             JsonObject result = json.getAsJsonObject();
             JsonObject user = result.getAsJsonObject("User");
-            return new JellyfinLogin(server, user.get("Id").getAsString(), user.get("Name").getAsString(),
+            return new JellyfinLogin(server, string(result, "ServerId"), user.get("Id").getAsString(), user.get("Name").getAsString(),
                     result.get("AccessToken").getAsString(), deviceId);
         });
+    }
+
+    /** The server's ID (the same whichever address it is reached at). */
+    public CompletableFuture<String> serverId() {
+        return get("/System/Info/Public").thenApply(json -> json.getAsJsonObject().get("Id").getAsString());
     }
 
     /** The user's libraries. */

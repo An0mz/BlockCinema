@@ -1,9 +1,8 @@
 package dev.anomz.blockcinema.client;
 
-import java.util.function.Consumer;
-
 import org.jetbrains.annotations.Nullable;
 
+import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.block.TvBlockEntity;
@@ -34,10 +33,13 @@ public final class TvRemote {
         PacketDistributor.sendToServer(ChangeTvPayload.of(origin, service, page, TvPlayers.resumeSeconds(page)));
     }
 
-    /** Plays this player's Jellyfin video; other players only see that Jellyfin is on. */
-    public static void playJellyfin(BlockPos origin, String page, double startSeconds, Consumer<TvPlayers.Position> onStop) {
-        TvPlayers.expectJellyfin(origin, page, onStop);
-        PacketDistributor.sendToServer(ChangeTvPayload.of(origin, TvService.JELLYFIN, "", startSeconds));
+    /**
+     * Plays a Jellyfin video. Only which video on which server is shared: everybody logged in to that
+     * server streams it with their own login, this player included.
+     */
+    public static void playJellyfin(BlockPos origin, String serverId, String itemId, double startSeconds) {
+        PacketDistributor.sendToServer(ChangeTvPayload.of(origin, TvService.JELLYFIN,
+                TvPageRules.jellyfinPage(serverId, itemId), startSeconds));
     }
 
     public static void togglePause(BlockPos origin) {

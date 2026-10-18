@@ -72,9 +72,7 @@ public class TvBlockEntity extends BlockEntity {
         if (source != null) {
             CompoundTag saved = new CompoundTag();
             saved.putString("service", source.service().id());
-            if (source.page() != null) {
-                saved.putString("page", source.page());
-            }
+            saved.putString("page", source.page());
             saved.putUUID("owner", source.owner());
             saved.putString("ownerName", source.ownerName());
             saved.putLong("anchorTick", source.anchorTick());
@@ -105,8 +103,8 @@ public class TvBlockEntity extends BlockEntity {
         if (service == null || !saved.hasUUID("owner")) {
             return null;
         }
-        String page = saved.contains("page") ? saved.getString("page") : null;
-        if (service == TvService.JELLYFIN ? page != null : page == null || !TvPageRules.valid(service, page)) {
+        String page = saved.getString("page");
+        if (!TvPageRules.valid(service, page)) {
             return null;
         }
         UUID owner = saved.getUUID("owner");

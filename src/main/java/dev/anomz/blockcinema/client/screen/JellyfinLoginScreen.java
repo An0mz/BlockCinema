@@ -17,7 +17,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.neoforged.fml.ModList;
 
 /**
  * Logs in to the player's Jellyfin server with Quick Connect: the screen shows a code, the player
@@ -42,12 +41,6 @@ public final class JellyfinLoginScreen extends Screen {
         super(Component.translatable("service." + BlockCinema.MODID + ".jellyfin"));
         this.parent = parent;
         this.screen = screen;
-    }
-
-    /** The mod version, which Jellyfin shows in its device list. */
-    static String version() {
-        return ModList.get().getModContainerById(BlockCinema.MODID)
-                .map(container -> container.getModInfo().getVersion().toString()).orElse("0");
     }
 
     @Override
@@ -82,7 +75,7 @@ public final class JellyfinLoginScreen extends Screen {
             return;
         }
         String deviceId = JellyfinLogin.savedDeviceId().orElseGet(() -> UUID.randomUUID().toString());
-        JellyfinApi api = new JellyfinApi(address.get(), deviceId, version(), null);
+        JellyfinApi api = new JellyfinApi(address.get(), deviceId, JellyfinApi.appVersion(), null);
         connect.active = false;
         status = Component.translatable(key("connecting"));
         api.serverName()

@@ -7,11 +7,13 @@ import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
+import dev.anomz.blockcinema.client.jellyfin.JellyfinWatch;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.renderer.LightTexture;
@@ -112,8 +114,9 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
     }
 
     /**
-     * Someone else's Jellyfin plays only for them, so the screen says who is watching. Drawn once, by
-     * the screen's origin TV (this one, bottom-left), centered on the whole screen.
+     * A Jellyfin TV this player can't stream (no login on that server, no access, or still loading) says
+     * who is watching and why there is no picture. Drawn once, by the screen's origin TV (this one,
+     * bottom-left), centered on the whole screen.
      */
     private static void drawCard(TvBlockEntity origin, TvLayout layout, PoseStack poseStack, MultiBufferSource buffers,
             float picW, float front) {
@@ -123,13 +126,20 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         }
         Font font = Minecraft.getInstance().font;
         Component text = Component.translatable("screen." + BlockCinema.MODID + ".jellyfin_card", source.ownerName());
-        float scale = Math.min(picW * 0.8f / Math.max(1, font.width(text)), 1 / 32f);
+        String[] ids = TvPageRules.jellyfinIds(source.page());
+        String why = ids == null || !JellyfinWatch.canWatch(ids[0]) ? "jellyfin_card_log_in"
+                : JellyfinWatch.failed(source.page()) ? "jellyfin_card_no_access" : "jellyfin_card_loading";
+        Component hint = Component.translatable("screen." + BlockCinema.MODID + "." + why);
+        int width = Math.max(font.width(text), font.width(hint));
+        float scale = Math.min(picW * 0.8f / Math.max(1, width), 1 / 32f);
         poseStack.pushPose();
         // The middle of the screen, as seen from the origin cell; x runs to the viewer's left here.
         poseStack.translate(0.5f - layout.cols() / 2f, layout.rows() / 2f - 0.5f, front - 0.005f);
         // Font space has x to the right and y down: turn it to face the viewer.
         poseStack.scale(-scale, -scale, scale);
-        font.drawInBatch(text, -font.width(text) / 2f, -font.lineHeight / 2f, 0xFFFFFFFF, false,
+        font.drawInBatch(text, -font.width(text) / 2f, -font.lineHeight - 1, 0xFFFFFFFF, false,
+                poseStack.last().pose(), buffers, Font.DisplayMode.NORMAL, 0xC0000000, LightTexture.FULL_BRIGHT);
+        font.drawInBatch(hint, -font.width(hint) / 2f, 1, 0xFFAAAAAA, false,
                 poseStack.last().pose(), buffers, Font.DisplayMode.NORMAL, 0xC0000000, LightTexture.FULL_BRIGHT);
         poseStack.popPose();
     }

@@ -1,14 +1,15 @@
 package dev.anomz.blockcinema.client.screen;
 
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
 
 import org.jetbrains.annotations.Nullable;
 
 import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.client.TvRemote;
-import dev.anomz.blockcinema.client.browser.VideoLinks;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinApi;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinLogin;
+import dev.anomz.blockcinema.client.jellyfin.JellyfinWatch;
 import net.minecraft.ChatFormatting;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
@@ -29,7 +30,7 @@ public final class JellyfinBrowseScreen extends Screen {
 
     private final Screen parent;
     private final BlockPos screen;
-    private final JellyfinLogin login;
+    private JellyfinLogin login;
     @Nullable
     private final String folderId;
     private final JellyfinApi api;
@@ -48,7 +49,7 @@ public final class JellyfinBrowseScreen extends Screen {
         this.screen = screen;
         this.login = login;
         this.folderId = folderId;
-        this.api = JellyfinApi.of(login, JellyfinLoginScreen.version());
+        this.api = JellyfinApi.of(login, JellyfinApi.appVersion());
     }
 
     private static String key(String name) {
@@ -114,19 +115,25 @@ public final class JellyfinBrowseScreen extends Screen {
         }
         open.active = false;
         status = Component.translatable(key("starting"));
-        api.playback(login.userId(), item.id()).whenComplete((playback, error) -> minecraft.execute(() -> {
+        // Logins saved by older versions don't know the server's ID yet; it is what the TV shares.
+        CompletableFuture<String> serverId = login.serverId().isEmpty()
+                ? api.serverId() : CompletableFuture.completedFuture(login.serverId());
+        serverId.whenComplete((id, error) -> minecraft.execute(() -> {
             if (error != null) {
-                BlockCinema.LOGGER.warn("Jellyfin couldn't play {}", item.id(), error);
+                BlockCinema.LOGGER.warn("Couldn't reach the Jellyfin server", error);
                 if (!closed) {
                     open.active = true;
                     status = Component.translatable(key("play_failed")).withStyle(ChatFormatting.RED);
                 }
                 return;
             }
-            // Jellyfin keeps the watch position itself: start where it says, and tell it where we stopped.
-            TvRemote.playJellyfin(screen, VideoLinks.videoPage(playback.url(), api.authorization()), item.resumeSeconds(),
-                    position -> api.reportStopped(playback, position.time()));
-            api.reportStarted(playback);
+            if (login.serverId().isEmpty()) {
+                login = login.withServerId(id);
+                login.save();
+            }
+            // Jellyfin keeps the watch position itself: start where it says. Everybody logged in to this
+            // server, this player included, then streams it with their own login.
+            TvRemote.playJellyfin(screen, id, item.id(), item.resumeSeconds());
             if (!closed) {
                 minecraft.setScreen(null);
             }
@@ -135,6 +142,7 @@ public final class JellyfinBrowseScreen extends Screen {
 
     private void logOut() {
         JellyfinLogin.forget();
+        JellyfinWatch.clear();
         minecraft.setScreen(parent);
     }
 

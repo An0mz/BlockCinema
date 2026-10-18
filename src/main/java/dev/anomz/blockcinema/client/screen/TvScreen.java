@@ -131,7 +131,7 @@ public final class TvScreen extends Screen {
             case YOUTUBE -> minecraft.setScreen(new LinkScreen(this, screen, service, VideoLinks::youtube));
             case TWITCH -> minecraft.setScreen(new LinkScreen(this, screen, service, VideoLinks::twitch));
             case JELLYFIN -> {
-                JellyfinLogin login = JellyfinLogin.load();
+                JellyfinLogin login = JellyfinLogin.current();
                 minecraft.setScreen(login != null
                         ? new JellyfinBrowseScreen(this, screen, login, null, Component.translatable(service.translationKey()))
                         : new JellyfinLoginScreen(this, screen));

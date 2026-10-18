@@ -26,14 +26,23 @@ public final class TvPageRules {
     private static final Pattern VIDEO_ID = Pattern.compile("[A-Za-z0-9_-]{11}");
     private static final Pattern LIST_ID = Pattern.compile("[A-Za-z0-9_-]{2,64}");
     private static final Pattern TWITCH_CHANNEL = Pattern.compile("[a-z0-9_]{1,25}");
+    /** Jellyfin's server and item IDs: 32 hex digits. */
+    private static final Pattern JELLYFIN_ID = Pattern.compile("[0-9a-f]{32}");
+    private static final String JELLYFIN_PREFIX = "jellyfin:";
 
     private TvPageRules() {
     }
 
-    /** Whether {@code page} is one of our pages for {@code service}. Jellyfin is never shared, so never valid. */
+    /**
+     * Whether {@code page} is one of our pages for {@code service}. For Jellyfin it is only which video on
+     * which server ({@link #jellyfinPage}): each viewer streams it with their own login.
+     */
     public static boolean valid(TvService service, String page) {
         if (page.length() > MAX_PAGE_LENGTH) {
             return false;
+        }
+        if (service == TvService.JELLYFIN || page.startsWith(JELLYFIN_PREFIX)) {
+            return service == TvService.JELLYFIN && jellyfinIds(page) != null;
         }
         URI uri;
         try {
@@ -57,6 +66,21 @@ public final class TvPageRules {
                     && videoSource(query.get("src"), scheme) != null;
             case JELLYFIN -> false;
         };
+    }
+
+    /** What a Jellyfin TV shares: the server's ID and the video's ID, never a login or an address. */
+    public static String jellyfinPage(String serverId, String itemId) {
+        return JELLYFIN_PREFIX + serverId.toLowerCase(Locale.ROOT) + ":" + itemId.toLowerCase(Locale.ROOT);
+    }
+
+    /** The server and item IDs in a {@link #jellyfinPage}, or null if it isn't one. */
+    @Nullable
+    public static String[] jellyfinIds(String page) {
+        if (!page.startsWith(JELLYFIN_PREFIX)) {
+            return null;
+        }
+        String[] ids = page.substring(JELLYFIN_PREFIX.length()).split(":", -1);
+        return ids.length == 2 && JELLYFIN_ID.matcher(ids[0]).matches() && JELLYFIN_ID.matcher(ids[1]).matches() ? ids : null;
     }
 
     /** The host a video-link page plays from (lowercase), or null if it isn't a valid video-link page. */
