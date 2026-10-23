@@ -109,6 +109,10 @@ public final class TvPlayers {
         String resumeKey;
         /** Runs once with the last position when this stops playing (turned off, replaced, broken or too far away). */
         Consumer<Position> onStop;
+        /** Where the YouTube playlist is, as the page last said; -1 if unknown. */
+        int listIndex = -1;
+        /** The browser is portrait (9:16), on a screen taller than wide. */
+        boolean portrait;
         /** Whether this player already told the server the video ended (once per video). */
         boolean endedSent;
         /** What went wrong, as the page or the browser said (see {@link #error}); null when fine. */
@@ -204,14 +208,35 @@ public final class TvPlayers {
     }
 
     /** A page says its video ended, on the client thread: the server can start the next queued one. */
-    static void reportEnded(CefBrowser browser) {
+    static void reportEnded(CefBrowser browser, int nextInList) {
         for (Long2ObjectMap.Entry<Playing> entry : PLAYING.long2ObjectEntrySet()) {
             Playing playing = entry.getValue();
             if (playing.browser == browser && !playing.endedSent) {
                 playing.endedSent = true;
-                TvRemote.ended(BlockPos.of(entry.getLongKey()), playing.key);
+                TvRemote.ended(BlockPos.of(entry.getLongKey()), playing.key, nextInList);
             }
         }
+    }
+
+    /** A YouTube page says where its playlist is, on the client thread. */
+    static void reportListIndex(CefBrowser browser, int index) {
+        for (Playing playing : PLAYING.values()) {
+            if (playing.browser == browser) {
+                playing.listIndex = index;
+            }
+        }
+    }
+
+    /** Where the screen's YouTube playlist is (from 0), or -1 if unknown or not a playlist. */
+    public static int listIndex(BlockPos origin) {
+        Playing playing = PLAYING.get(origin.asLong());
+        return playing == null ? -1 : playing.listIndex;
+    }
+
+    /** Whether the screen's picture is portrait (9:16): screens taller than wide, for Shorts. */
+    public static boolean portrait(BlockPos origin) {
+        Playing playing = PLAYING.get(origin.asLong());
+        return playing != null && playing.portrait;
     }
 
     /** A page's or the browser's error report, on the client thread; null clears it. */
@@ -409,14 +434,19 @@ public final class TvPlayers {
             playing = start(origin, playing, withStart(page, source.position(level.getGameTime())), key, resumeKey, onStop);
         }
         wanted.add(origin.asLong());
+        boolean portrait = layout.portrait();
+        double longSide = Math.max(layout.cols() * layout.frame().cellWidth(), layout.rows());
         int width = switch (BlockCinemaClientConfig.quality()) {
             case P720 -> WIDTH;
             case P1080 -> HD_WIDTH;
-            case AUTO -> playing.fullscreen || layout.cols() >= HD_COLUMNS ? HD_WIDTH : WIDTH;
+            case AUTO -> playing.fullscreen || longSide >= HD_COLUMNS ? HD_WIDTH : WIDTH;
         };
-        if (width != playing.width) {
+        if (width != playing.width || portrait != playing.portrait) {
             playing.width = width;
-            playing.browser.resize(width, width == HD_WIDTH ? HD_HEIGHT : HEIGHT);
+            playing.portrait = portrait;
+            int height = width == HD_WIDTH ? HD_HEIGHT : HEIGHT;
+            // A portrait screen gets a portrait browser: Shorts fill it.
+            playing.browser.resize(portrait ? height : width, portrait ? width : height);
         }
         syncState(playing, source, level.getGameTime(), now);
         updateVolume(playing, layout, player, now);
@@ -446,6 +476,7 @@ public final class TvPlayers {
         playing.position = null;
         playing.error = null;
         playing.endedSent = false;
+        playing.listIndex = -1;
         playing.volume = -1;
         playing.lastSeenMillis = Util.getMillis();
         playing.lastSeekSyncMillis = Util.getMillis();

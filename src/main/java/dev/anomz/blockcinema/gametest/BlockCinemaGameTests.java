@@ -2,6 +2,7 @@ package dev.anomz.blockcinema.gametest;
 
 import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.BlockCinemaRegistries;
+import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.block.TvBlock;
@@ -154,6 +155,24 @@ public final class BlockCinemaGameTests {
         next(player);
         VideoEndedPayload.apply(player, new VideoEndedPayload(layout.origin(), YOUTUBE_A));
         helper.assertTrue(YOUTUBE_B.equals(tv.source().page()) && tv.queue().isEmpty(), "the next video plays when one ends");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void playlistMovesOnTogether(GameTestHelper helper) {
+        wall(helper, 1, 1);
+        TvLayout layout = layoutAt(helper, new BlockPos(1, 1, 4));
+        ServerPlayer player = viewer(helper);
+        String list = TvPageRules.youtubeListPage("PL1234567890", 0);
+        ChangeTvPayload.apply(player, ChangeTvPayload.of(layout.origin(), TvService.YOUTUBE, list, 60));
+        next(player);
+        ChangeTvPayload.apply(player, ChangeTvPayload.queued(layout.origin(), TvService.YOUTUBE, YOUTUBE_B, "B"));
+
+        next(player);
+        VideoEndedPayload.apply(player, new VideoEndedPayload(layout.origin(), list, 1));
+        TvBlockEntity tv = origin(helper, layout);
+        helper.assertTrue(TvPageRules.youtubeListPage("PL1234567890", 1).equals(tv.source().page()) && tv.queue().size() == 1,
+                "the playlist's next video plays before the queue");
         helper.succeed();
     }
 

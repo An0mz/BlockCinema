@@ -21,5 +21,7 @@ public enum Icon {
     FOLDER,
     FILM,
     MUTE,
-    ROTATE
+    ROTATE,
+    PREVIOUS,
+    NEXT
 }

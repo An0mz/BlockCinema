@@ -82,9 +82,30 @@ public final class TvRemote {
         PacketDistributor.sendToServer(new QueueTvPayload(origin, QueueTvPayload.REMOVE, index));
     }
 
-    /** The video {@code page} ended here (sent by {@code TvPlayers}, once per video). */
-    public static void ended(BlockPos origin, String page) {
-        PacketDistributor.sendToServer(new VideoEndedPayload(origin, page));
+    /** The video {@code page} ended here (sent by {@code TvPlayers}, once per video); see {@link VideoEndedPayload}. */
+    public static void ended(BlockPos origin, String page, int nextInList) {
+        PacketDistributor.sendToServer(new VideoEndedPayload(origin, page, nextInList));
+    }
+
+    /**
+     * Shorts-style scrolling: the next ({@code direction} 1) or previous (-1) video. In a YouTube playlist
+     * that moves through the playlist; otherwise next skips to the queued video and previous starts over.
+     */
+    public static void skipVideo(BlockPos origin, int direction) {
+        TvSource source = source(origin);
+        if (source == null) {
+            return;
+        }
+        String list = source.service() == TvService.YOUTUBE ? TvPageRules.youtubeList(source.page()) : null;
+        if (list != null) {
+            int at = Math.max(0, TvPlayers.listIndex(origin));
+            PacketDistributor.sendToServer(ChangeTvPayload.of(origin, TvService.YOUTUBE,
+                    TvPageRules.youtubeListPage(list, Math.max(0, at + direction)), 0));
+        } else if (direction > 0) {
+            next(origin);
+        } else {
+            seek(origin, 0);
+        }
     }
 
     /** Turns a floor or ceiling screen's picture a quarter turn (see {@link RotateTvPayload}). */

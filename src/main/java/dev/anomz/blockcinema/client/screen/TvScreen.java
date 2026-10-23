@@ -47,6 +47,7 @@ public final class TvScreen extends PanelScreen {
     private TimeBar timeBar;
     private VolumeSlider volume;
     private boolean builtOn;
+    private final SkipGate scrollGate = new SkipGate();
     /** Asked once per opening: a YouTube TV is on but this player hasn't agreed to YouTube's terms. */
     private boolean askedToAgree;
     private float volumeBeforeMute = 1;
@@ -169,7 +170,11 @@ public final class TvScreen extends PanelScreen {
                 Component.translatable(key("skip_forward"), SKIP_SECONDS), IconButton.Style.GHOST, () -> TvRemote.skip(screen, SKIP_SECONDS)));
         addRenderableWidget(new IconButton(x + 6, rowY + 2, 20, () -> TvPlayers.volume(screen) <= 0 ? Icon.MUTE : Icon.VOLUME,
                 Component.translatable(key("mute")), IconButton.Style.GHOST, this::toggleMute));
-        volume = addRenderableWidget(new VolumeSlider(x + 28, rowY + 6, 62, TvPlayers.volume(screen)));
+        volume = addRenderableWidget(new VolumeSlider(x + 28, rowY + 6, 44, TvPlayers.volume(screen)));
+        addRenderableWidget(new IconButton(mid - 12 - 6 - 20 - 4 - 20, rowY + 2, 20, Icon.PREVIOUS,
+                Component.translatable(key("previous_video")), IconButton.Style.GHOST, () -> TvRemote.skipVideo(screen, -1)));
+        addRenderableWidget(new IconButton(mid + 12 + 6 + 20 + 4, rowY + 2, 20, Icon.NEXT,
+                Component.translatable(key("next_video")), IconButton.Style.GHOST, () -> TvRemote.skipVideo(screen, 1)));
         IconButton fullscreen = addRenderableWidget(new IconButton(x + w - 6 - 20 - 4 - 20, rowY + 2, 20, Icon.FULLSCREEN,
                 Component.translatable(key("fullscreen")), IconButton.Style.GHOST, () -> minecraft.setScreen(new TvFullscreenScreen(this, screen))));
         // Someone else's Jellyfin has no picture here.
@@ -202,6 +207,19 @@ public final class TvScreen extends PanelScreen {
             TvPlayers.setVolume(screen, volumeBeforeMute);
         }
         volume.show(TvPlayers.volume(screen));
+    }
+
+    /** Shorts-style: the wheel goes to the next (down) or previous (up) video, unless a slider takes it. */
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) {
+            return true;
+        }
+        if (timeBar != null && scrollY != 0 && scrollGate.allow()) {
+            TvRemote.skipVideo(screen, scrollY < 0 ? 1 : -1);
+            return true;
+        }
+        return false;
     }
 
     @Override

@@ -18,6 +18,16 @@ final class StateReports extends CefDisplayHandlerAdapter {
     static final String PREFIX = "[blockcinema-state] ";
     static final String ERROR_PREFIX = "[blockcinema-error] ";
     static final String ENDED = "[blockcinema-ended]";
+    static final String LIST_PREFIX = "[blockcinema-list] ";
+
+    /** The whole number after {@code prefix} (0 to 9999), or -1 if the message isn't that. */
+    static int parseNumber(String message, String prefix) {
+        if (!message.startsWith(prefix)) {
+            return -1;
+        }
+        String number = message.substring(prefix.length());
+        return number.matches("\\d{1,4}") ? Integer.parseInt(number) : -1;
+    }
     private static final Pattern ERROR_CODE = Pattern.compile("[a-z_]{1,20}");
 
     /** The error code in an error line ("none" when playing again), or null if it isn't one. */
@@ -66,7 +76,17 @@ final class StateReports extends CefDisplayHandlerAdapter {
             return false;
         }
         if (ENDED.equals(message)) {
-            Minecraft.getInstance().execute(() -> TvPlayers.reportEnded(browser));
+            Minecraft.getInstance().execute(() -> TvPlayers.reportEnded(browser, -1));
+            return true;
+        }
+        int nextInList = parseNumber(message, ENDED + " ");
+        if (nextInList >= 0) {
+            Minecraft.getInstance().execute(() -> TvPlayers.reportEnded(browser, nextInList));
+            return true;
+        }
+        int listIndex = parseNumber(message, LIST_PREFIX);
+        if (listIndex >= 0) {
+            Minecraft.getInstance().execute(() -> TvPlayers.reportListIndex(browser, listIndex));
             return true;
         }
         String error = parseError(message);

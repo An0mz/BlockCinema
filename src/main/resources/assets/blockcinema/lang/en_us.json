@@ -49,7 +49,7 @@
   "screen.blockcinema.fullscreen": "Fullscreen",
   "screen.blockcinema.rotate": "Rotate picture",
   "screen.blockcinema.volume": "TV volume: %s%%",
-  "screen.blockcinema.fullscreen_help": "%sSpace: play/pause   Left/Right: -10s/+10s   Up/Down: volume (%s%%)   Esc: back",
+  "screen.blockcinema.fullscreen_help": "%sScroll or click: next video   Space: play/pause   Left/Right: -10s/+10s   Up/Down: volume (%s%%)   Esc: back",
   "screen.blockcinema.time_unknown": "--:-- / --:--",
   "screen.blockcinema.live": "Live",
   "screen.blockcinema.play": "Play",
@@ -115,5 +115,7 @@
   "screen.blockcinema.more_queued": "and %s more",
   "screen.blockcinema.jellyfin.audio": "Audio: %s",
   "screen.blockcinema.jellyfin.subtitles": "Subtitles: %s",
-  "screen.blockcinema.jellyfin.subtitles_off": "Off"
+  "screen.blockcinema.jellyfin.subtitles_off": "Off",
+  "screen.blockcinema.previous_video": "Previous video (or scroll up)",
+  "screen.blockcinema.next_video": "Next video (or scroll down)"
 }

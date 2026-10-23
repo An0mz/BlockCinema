@@ -29,6 +29,14 @@ class StateReportsTest {
     }
 
     @Test
+    void parsesPlaylistReports() {
+        assertEquals(3, StateReports.parseNumber("[blockcinema-list] 3", StateReports.LIST_PREFIX));
+        assertEquals(4, StateReports.parseNumber("[blockcinema-ended] 4", StateReports.ENDED + " "));
+        assertEquals(-1, StateReports.parseNumber("[blockcinema-list] -1", StateReports.LIST_PREFIX));
+        assertEquals(-1, StateReports.parseNumber("[blockcinema-list] x", StateReports.LIST_PREFIX));
+    }
+
+    @Test
     void onlyOurPagesCount() {
         assertTrue(StateReports.fromOurPage("https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ"));
         assertTrue(StateReports.fromOurPage("http://blockcinema.anomz.dev/video.html?src=x"));

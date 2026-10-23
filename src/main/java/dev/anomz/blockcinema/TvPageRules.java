@@ -28,6 +28,9 @@ public final class TvPageRules {
 
     private static final Pattern VIDEO_ID = Pattern.compile("[A-Za-z0-9_-]{11}");
     private static final Pattern LIST_ID = Pattern.compile("[A-Za-z0-9_-]{2,64}");
+    /** A video's place in a playlist, from 0. */
+    private static final Pattern LIST_INDEX = Pattern.compile("\\d{1,4}");
+    public static final int MAX_LIST_INDEX = 9999;
     private static final Pattern TWITCH_CHANNEL = Pattern.compile("[a-z0-9_]{1,25}");
     /** Jellyfin's server and item IDs: 32 hex digits. */
     private static final Pattern JELLYFIN_ID = Pattern.compile("[0-9a-f]{32}");
@@ -137,10 +140,30 @@ public final class TvPageRules {
     private static boolean youtubeQuery(Map<String, String> query) {
         String video = query.get("v");
         String list = query.get("list");
-        if (video == null && list == null || query.size() != (video != null ? 1 : 0) + (list != null ? 1 : 0)) {
+        String index = query.get("index");
+        if (video == null && list == null || index != null && list == null
+                || query.size() != (video != null ? 1 : 0) + (list != null ? 1 : 0) + (index != null ? 1 : 0)) {
             return false;
         }
-        return (video == null || VIDEO_ID.matcher(video).matches()) && (list == null || LIST_ID.matcher(list).matches());
+        return (video == null || VIDEO_ID.matcher(video).matches()) && (list == null || LIST_ID.matcher(list).matches())
+                && (index == null || LIST_INDEX.matcher(index).matches());
+    }
+
+    /** The playlist a YouTube page plays, or null if it plays a single video. */
+    @Nullable
+    public static String youtubeList(String page) {
+        try {
+            URI uri = new URI(page);
+            Map<String, String> query = query(uri.getRawQuery());
+            return query == null || !"/youtube.html".equals(uri.getRawPath()) ? null : query.get("list");
+        } catch (URISyntaxException e) {
+            return null;
+        }
+    }
+
+    /** Our YouTube page playing playlist {@code list} from video {@code index} (counting from 0). */
+    public static String youtubeListPage(String list, int index) {
+        return "https://" + HOST + "/youtube.html?list=" + list + "&index=" + Math.max(0, Math.min(index, MAX_LIST_INDEX));
     }
 
     /** The video link in a video page, if it is an http(s) link served under the page's own scheme. */

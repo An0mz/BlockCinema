@@ -75,8 +75,9 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         float screenW = layout.cols() * cell;
         float areaW = screenW - 2 * BEZEL;
         float areaH = layout.rows() - 2 * BEZEL;
-        // Browsers and the test pattern are both 16:9.
-        float aspect = 16 / 9f;
+        ResourceLocation picture = TvPlayers.texture(layout.origin());
+        // Browsers are 16:9, or 9:16 on screens taller than wide; the test pattern is 16:9.
+        float aspect = picture != null && TvPlayers.portrait(layout.origin()) ? 9 / 16f : 16 / 9f;
         float picW = Math.min(areaW, areaH * aspect);
         float picH = picW / aspect;
         float picX0 = (screenW - picW) / 2;
@@ -103,7 +104,6 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         poseStack.mulPose(Axis.YP.rotationDegrees(-frame.modelY() + frame.extraYaw()));
         poseStack.mulPose(Axis.XP.rotationDegrees(-frame.modelX()));
         Matrix4f pose = poseStack.last().pose();
-        ResourceLocation picture = TvPlayers.texture(layout.origin());
         VertexConsumer consumer = buffers.getBuffer(RenderType.text(picture != null ? picture : TestPattern.texture()));
         float left = cell / 2 - (x0 - cellX0);
         float right = cell / 2 - (x1 - cellX0);

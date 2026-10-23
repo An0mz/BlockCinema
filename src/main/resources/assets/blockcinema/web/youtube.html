@@ -16,6 +16,8 @@
   var params = new URLSearchParams(location.search);
   var video = /^[A-Za-z0-9_-]{11}$/.test(params.get('v') || '') ? params.get('v') : null;
   var list = /^[A-Za-z0-9_-]{2,64}$/.test(params.get('list') || '') ? params.get('list') : null;
+  // Where to start in the playlist, from 0.
+  var index = /^\d{1,4}$/.test(params.get('index') || '') ? Number(params.get('index')) : 0;
   // Where to start, in seconds (resuming), passed in the fragment.
   var start = Math.floor(Number(new URLSearchParams(location.hash.slice(1)).get('start')) || 0);
   var player;
@@ -97,6 +99,7 @@
     if (list) {
       vars.listType = 'playlist';
       vars.list = list;
+      vars.index = index;
     }
     player = new YT.Player('player', {
       // Privacy-enhanced mode: the player stores less about the viewer.
@@ -114,13 +117,24 @@
           if (event.data === YT.PlayerState.PLAYING) {
             reportError('none');
           } else if (event.data === YT.PlayerState.ENDED) {
-            reportEnded();
+            // In a playlist, say which video comes next, so everyone moves on to it together.
+            var at = list ? player.getPlaylistIndex() : -1;
+            var count = list ? (player.getPlaylist() || []).length : 0;
+            if (at >= 0 && at + 1 < count) {
+              console.log('[blockcinema-ended] ' + (at + 1));
+            } else {
+              reportEnded();
+            }
           }
         },
         onReady: function (event) {
           ready = true;
           setInterval(function () {
             var state = player.getPlayerState();
+            if (list) {
+              // Where the playlist is, for the next and previous buttons: "[blockcinema-list] <index>".
+              console.log('[blockcinema-list] ' + player.getPlaylistIndex());
+            }
             report(player.getCurrentTime(), player.getDuration(),
                 state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING);
           }, 1000);

@@ -22,6 +22,7 @@ public final class TvFullscreenScreen extends Screen {
 
     private final Screen parent;
     private final BlockPos screen;
+    private final SkipGate scrollGate = new SkipGate();
 
     public TvFullscreenScreen(Screen parent, BlockPos screen) {
         super(Component.translatable("screen." + BlockCinema.MODID + ".fullscreen"));
@@ -38,9 +39,10 @@ public final class TvFullscreenScreen extends Screen {
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         graphics.fill(0, 0, width, height, 0xFF000000);
         ResourceLocation picture = TvPlayers.texture(screen);
-        // 16:9, as large as fits.
-        int picW = Math.min(width, height * 16 / 9);
-        int picH = picW * 9 / 16;
+        // 16:9, or 9:16 on a portrait screen, as large as fits.
+        boolean portrait = TvPlayers.portrait(screen);
+        int picW = portrait ? Math.min(width, height * 9 / 16) : Math.min(width, height * 16 / 9);
+        int picH = portrait ? picW * 16 / 9 : picW * 9 / 16;
         int x = (width - picW) / 2;
         int y = (height - picH) / 2;
         if (picture != null) {
@@ -71,6 +73,25 @@ public final class TvFullscreenScreen extends Screen {
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
         // The picture covers the world; no blur or dimming behind it.
+    }
+
+    /** Shorts-style: the wheel goes to the next (down) or previous (up) video. */
+    @Override
+    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
+        if (scrollY != 0 && scrollGate.allow()) {
+            TvRemote.skipVideo(screen, scrollY < 0 ? 1 : -1);
+        }
+        return true;
+    }
+
+    /** A click goes to the next video too. */
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && scrollGate.allow()) {
+            TvRemote.skipVideo(screen, 1);
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     @Override

@@ -77,6 +77,11 @@ public record TvLayout(BlockPos origin, ScreenFrame frame, int cols, int rows, i
         return other.getBlock() == state.getBlock() && frame.equals(ScreenFrame.of(other));
     }
 
+    /** Whether the screen is taller than wide, so its picture is portrait (9:16, for Shorts). */
+    public boolean portrait() {
+        return rows > cols * frame.cellWidth();
+    }
+
     /** The TV {@code c} to the right of and {@code r} up from the origin. */
     public BlockPos cell(int c, int r) {
         return origin.offset(multiply(frame.right(), c)).offset(multiply(frame.top(), r));
