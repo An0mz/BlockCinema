@@ -45,6 +45,18 @@ TVs only show these services through their official players. There is no address
 | TV Remote | Shapeless: iron ingot + redstone + any button + black dye |
 | Diagonal TV | A TV on its own (and a Diagonal TV on its own back to a TV) |
 
+## Player settings
+
+`config/blockcinema-client.toml`, also in Mods > Block Cinema > Config, for each player:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `playVideos` | `true` | Turn all video off (for slow computers); TVs then say what is on. |
+| `onlyTvYouLookAt` | `false` | Only the TV you look at plays for you; it keeps playing until you look at another. |
+| `maxScreens` | `4` | Most TVs playing at once; the closest play. |
+| `quality` | `AUTO` | `AUTO` (1080p for big screens and fullscreen), `P720` or `P1080`. |
+| `startVolume` | `100` | The volume a TV starts at, in percent. |
+
 ## Server settings
 
 `config/blockcinema-server.toml` (or per world in `serverconfig/`), also editable in singleplayer from Mods > Block Cinema > Config:

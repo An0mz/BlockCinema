@@ -88,5 +88,15 @@
   "service.blockcinema.youtube": "YouTube",
   "service.blockcinema.twitch": "Twitch",
   "service.blockcinema.jellyfin": "Jellyfin",
-  "service.blockcinema.direct_link": "Video link"
+  "service.blockcinema.direct_link": "Video link",
+  "screen.blockcinema.hidden.video_off": "Videos are turned off in your Block Cinema settings",
+  "screen.blockcinema.hidden.not_looked_at": "Paused for you: look at this TV to watch it",
+  "screen.blockcinema.hidden.too_many": "Paused for you: too many TVs playing nearby (see your settings)",
+  "blockcinema.configuration.section.blockcinema.client.toml": "Player Settings",
+  "blockcinema.configuration.section.blockcinema.client.toml.title": "Block Cinema Player Settings",
+  "blockcinema.configuration.playVideos": "Play Videos",
+  "blockcinema.configuration.onlyTvYouLookAt": "Only the TV I'm Looking At",
+  "blockcinema.configuration.maxScreens": "Most TVs Playing at Once",
+  "blockcinema.configuration.quality": "Picture Quality",
+  "blockcinema.configuration.startVolume": "Starting TV Volume (%)"
 }

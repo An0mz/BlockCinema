@@ -19,6 +19,7 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
@@ -36,6 +37,7 @@ import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 public final class BlockCinemaClient {
     public BlockCinemaClient(IEventBus modEventBus, ModContainer container) {
         // Mods menu > Block Cinema > Config: the server settings, editable in singleplayer.
+        container.registerConfig(ModConfig.Type.CLIENT, BlockCinemaClientConfig.SPEC);
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
         modEventBus.addListener(BlockCinemaClient::onRegisterRenderers);
         NeoForge.EVENT_BUS.addListener(BlockCinemaClient::onRightClickBlock);

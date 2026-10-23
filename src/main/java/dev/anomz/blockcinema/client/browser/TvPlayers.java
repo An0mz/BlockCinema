@@ -1,8 +1,10 @@
 package dev.anomz.blockcinema.client.browser;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import org.cef.CefClient;
@@ -20,6 +22,7 @@ import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.client.Agreements;
+import dev.anomz.blockcinema.client.BlockCinemaClientConfig;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinWatch;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -71,9 +74,24 @@ public final class TvPlayers {
             new WatchPositions(FMLPaths.CONFIGDIR.get().resolve(BlockCinema.MODID).resolve("positions.json"));
     private static final Consumer<Position> NOTHING = position -> {
     };
+    /** Why screens near the player don't play for them; rebuilt every check. */
+    private static final Long2ObjectMap<Hidden> HIDDEN = new Long2ObjectOpenHashMap<>();
+    /** The screen picked by "only the TV you look at", kept until another is looked at. */
+    @Nullable
+    private static Long focused;
+    /** The screen watched fullscreen, which always plays. */
+    @Nullable
+    private static Long fullscreenOrigin;
     private static MCEFClient client;
     private static int nextTextureId;
     private static boolean gamePaused;
+
+    /** Why a screen doesn't play for this player (their own settings); shown on its screen. */
+    public enum Hidden {
+        VIDEO_OFF,
+        NOT_LOOKED_AT,
+        TOO_MANY
+    }
 
     /** Where a video is: seconds in, its length (0 when live or not known yet) and whether it is paused. */
     public record Position(double time, double length, boolean paused) {
@@ -96,7 +114,7 @@ public final class TvPlayers {
         @Nullable
         Position position;
         /** This TV's own volume, 0 to 1, set from its menu. */
-        float userVolume = 1;
+        float userVolume = BlockCinemaClientConfig.startVolume();
         /** Volume from the sound settings and the player's distance (or full when watched fullscreen). */
         float worldGain = 1;
         boolean fullscreen;
@@ -198,6 +216,7 @@ public final class TvPlayers {
 
     /** While watched fullscreen, the screen plays at full volume whatever the distance, and counts as in sight. */
     public static void setFullscreen(BlockPos origin, boolean fullscreen) {
+        fullscreenOrigin = fullscreen ? origin.asLong() : null;
         Playing playing = PLAYING.get(origin.asLong());
         if (playing != null) {
             playing.fullscreen = fullscreen;
@@ -227,10 +246,10 @@ public final class TvPlayers {
             PLAYING.values().forEach(playing -> playing.lastPauseSyncMillis = 0);
         }
         LongSet wanted = new LongOpenHashSet();
+        HIDDEN.clear();
         if (ready()) {
-            List<TvBlockEntity> tvs = new ArrayList<>(TvBlockEntity.CLIENT_PLAYING);
-            for (TvBlockEntity tv : tvs) {
-                follow(level, player, tv, now, wanted);
+            for (Candidate candidate : choose(candidates(level, player), player)) {
+                follow(level, player, candidate.tv(), candidate.layout(), candidate.source(), now, wanted);
             }
         }
         PLAYING.long2ObjectEntrySet().removeIf(entry -> {
@@ -242,17 +261,94 @@ public final class TvPlayers {
         });
     }
 
-    private static void follow(ClientLevel level, Player player, TvBlockEntity tv, long now, LongSet wanted) {
-        TvSource source = tv.source();
+    /** A screen near the player with something on. */
+    private record Candidate(TvBlockEntity tv, TvLayout layout, TvSource source, double distanceSqr) {
+    }
+
+    private static List<Candidate> candidates(ClientLevel level, Player player) {
+        List<Candidate> candidates = new ArrayList<>();
+        for (TvBlockEntity tv : new ArrayList<>(TvBlockEntity.CLIENT_PLAYING)) {
+            TvSource source = tv.source();
+            BlockPos origin = tv.getBlockPos();
+            double distanceSqr = origin.distToCenterSqr(player.position());
+            if (source == null || tv.isRemoved() || tv.getLevel() != level || distanceSqr > MAX_DISTANCE * MAX_DISTANCE) {
+                continue;
+            }
+            TvLayout layout = tv.layout(level.getGameTime());
+            if (!layout.invalid() && layout.origin().equals(origin)) {
+                candidates.add(new Candidate(tv, layout, source, distanceSqr));
+            }
+        }
+        return candidates;
+    }
+
+    /**
+     * The screens this player's settings let play (see {@link BlockCinemaClientConfig}), nearest first.
+     * The others go in {@link #HIDDEN} with the reason, for the card on their screen. A screen watched
+     * fullscreen always plays.
+     */
+    private static List<Candidate> choose(List<Candidate> candidates, Player player) {
+        candidates.sort(Comparator.comparingDouble(Candidate::distanceSqr));
+        List<Candidate> chosen = new ArrayList<>();
+        Long focus = BlockCinemaClientConfig.onlyTvYouLookAt() ? focus(candidates, player) : null;
+        for (Candidate candidate : candidates) {
+            long key = candidate.tv().getBlockPos().asLong();
+            Hidden hidden = null;
+            if (fullscreenOrigin == null || fullscreenOrigin != key) {
+                if (!BlockCinemaClientConfig.playVideos()) {
+                    hidden = Hidden.VIDEO_OFF;
+                } else if (focus != null && focus != key) {
+                    hidden = Hidden.NOT_LOOKED_AT;
+                } else if (chosen.size() >= BlockCinemaClientConfig.maxScreens()) {
+                    hidden = Hidden.TOO_MANY;
+                }
+            }
+            if (hidden == null) {
+                chosen.add(candidate);
+            } else {
+                HIDDEN.put(key, hidden);
+            }
+        }
+        return chosen;
+    }
+
+    /**
+     * The screen the player looks at (the nearest one along their view), else the one looked at last if
+     * it is still around, else the nearest.
+     */
+    @Nullable
+    private static Long focus(List<Candidate> candidates, Player player) {
+        if (candidates.isEmpty()) {
+            return null;
+        }
+        Vec3 eye = player.getEyePosition();
+        Vec3 end = eye.add(player.getViewVector(1).scale(MAX_DISTANCE));
+        double best = Double.MAX_VALUE;
+        Long looked = null;
+        for (Candidate candidate : candidates) {
+            Optional<Vec3> hit = box(candidate.layout()).clip(eye, end);
+            if (hit.isPresent() && hit.get().distanceToSqr(eye) < best) {
+                best = hit.get().distanceToSqr(eye);
+                looked = candidate.tv().getBlockPos().asLong();
+            }
+        }
+        if (looked != null) {
+            focused = looked;
+        } else if (focused == null || candidates.stream().noneMatch(c -> c.tv().getBlockPos().asLong() == focused)) {
+            focused = candidates.get(0).tv().getBlockPos().asLong();
+        }
+        return focused;
+    }
+
+    /** Why a screen near the player doesn't play for them, or null if it does (or nothing is on). */
+    @Nullable
+    public static Hidden hidden(BlockPos origin) {
+        return HIDDEN.get(origin.asLong());
+    }
+
+    private static void follow(ClientLevel level, Player player, TvBlockEntity tv, TvLayout layout, TvSource source,
+            long now, LongSet wanted) {
         BlockPos origin = tv.getBlockPos();
-        if (source == null || tv.isRemoved() || tv.getLevel() != level
-                || origin.distToCenterSqr(player.position()) > MAX_DISTANCE * MAX_DISTANCE) {
-            return;
-        }
-        TvLayout layout = tv.layout(level.getGameTime());
-        if (layout.invalid() || !layout.origin().equals(origin)) {
-            return;
-        }
         String key = source.page();
         Playing playing = PLAYING.get(origin.asLong());
         if (playing == null || !playing.key.equals(key)) {
@@ -279,7 +375,11 @@ public final class TvPlayers {
             playing = start(origin, playing, withStart(page, source.position(level.getGameTime())), key, resumeKey, onStop);
         }
         wanted.add(origin.asLong());
-        int width = playing.fullscreen || layout.cols() >= HD_COLUMNS ? HD_WIDTH : WIDTH;
+        int width = switch (BlockCinemaClientConfig.quality()) {
+            case P720 -> WIDTH;
+            case P1080 -> HD_WIDTH;
+            case AUTO -> playing.fullscreen || layout.cols() >= HD_COLUMNS ? HD_WIDTH : WIDTH;
+        };
         if (width != playing.width) {
             playing.width = width;
             playing.browser.resize(width, width == HD_WIDTH ? HD_HEIGHT : HEIGHT);
@@ -345,9 +445,13 @@ public final class TvPlayers {
                 playing.fullscreen || now - playing.lastSeenMillis < OUT_OF_SIGHT_MILLIS);
     }
 
+    /** The blocks the screen covers (its far corner can be on either side of the origin). */
+    private static AABB box(TvLayout layout) {
+        return new AABB(layout.origin()).minmax(new AABB(layout.cell(layout.cols() - 1, layout.rows() - 1)));
+    }
+
     private static double distance(TvLayout layout, Vec3 ear) {
-        BlockPos far = layout.cell(layout.cols() - 1, layout.rows() - 1);
-        AABB box = new AABB(Vec3.atLowerCornerOf(layout.origin()), Vec3.atLowerCornerOf(far).add(1, 1, 1));
+        AABB box = box(layout);
         return TvVolume.distanceToBox(ear.x, ear.y, ear.z, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
     }
 

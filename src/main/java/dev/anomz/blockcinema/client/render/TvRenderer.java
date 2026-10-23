@@ -1,5 +1,7 @@
 package dev.anomz.blockcinema.client.render;
 
+import java.util.Locale;
+
 import org.joml.Matrix4f;
 
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -130,7 +132,12 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         }
         Component text;
         String why;
-        if (source.service() == TvService.JELLYFIN) {
+        TvPlayers.Hidden hidden = TvPlayers.hidden(origin.getBlockPos());
+        if (hidden != null) {
+            // This player's own settings keep it from playing here.
+            text = Component.translatable(source.service().translationKey());
+            why = "hidden." + hidden.name().toLowerCase(Locale.ROOT);
+        } else if (source.service() == TvService.JELLYFIN) {
             text = Component.translatable("screen." + BlockCinema.MODID + ".jellyfin_card", source.ownerName());
             String[] ids = TvPageRules.jellyfinIds(source.page());
             why = ids == null || !JellyfinWatch.canWatch(ids[0]) ? "jellyfin_card_log_in"
