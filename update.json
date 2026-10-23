@@ -1,0 +1,10 @@
+{
+  "homepage": "https://github.com/An0mz/BlockCinema",
+  "promos": {
+    "1.21.1-latest": "0.1.0",
+    "1.21.1-recommended": "0.1.0"
+  },
+  "1.21.1": {
+    "0.1.0": "First release: TVs for YouTube, Twitch, Jellyfin and video links."
+  }
+}

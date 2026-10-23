@@ -48,6 +48,12 @@ The Minecraft server you play on stores what each TV plays (the service, video I
 and who started it) so everyone near the TV watches the same thing. It sees your Minecraft name next to
 what you start. It never receives video, logins or tokens.
 
+## Update check
+
+When the game starts, NeoForge checks whether a newer Block Cinema is out by reading a small file from GitHub
+(`raw.githubusercontent.com/An0mz/BlockCinema/main/update.json`), like it does for other mods that offer this.
+GitHub sees that request. It can be turned off with `versionCheck` in `config/fml.toml`.
+
 ## MCEF
 
 The browser comes from [MCEF](https://github.com/CinemaMod/mcef), a separate mod. On first start it

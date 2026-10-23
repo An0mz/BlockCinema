@@ -31,7 +31,8 @@ version="${mod_version}" #mandatory
 displayName="${mod_name}" #mandatory
 
 # A URL to query for updates for this mod. See the JSON update specification https://docs.neoforged.net/docs/misc/updatechecker/
-#updateJSONURL="https://change.me.example.invalid/updates.json" #optional
+# update.json in the repository: list each release there to tell players about it.
+updateJSONURL="https://raw.githubusercontent.com/An0mz/BlockCinema/main/update.json" #optional
 
 # A URL for the "homepage" for this mod, displayed in the mod UI
 displayURL="https://github.com/An0mz/BlockCinema" #optional
