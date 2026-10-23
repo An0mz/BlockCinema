@@ -113,6 +113,9 @@ public final class TvPlayers {
         int listIndex = -1;
         /** The browser is portrait (9:16), on a screen taller than wide or in the vertical fullscreen view. */
         boolean portrait;
+        /** The shared state the page was last brought in step with; null until the first check. */
+        @Nullable
+        TvSource synced;
         /** The page has reported, so it's up and hears what the mod sends it. */
         boolean pageHeard;
         /** Fullscreen shows the vertical (Shorts) view. */
@@ -490,6 +493,7 @@ public final class TvPlayers {
         playing.endedSent = false;
         playing.listIndex = -1;
         playing.pageHeard = false;
+        playing.synced = null;
         playing.volume = -1;
         playing.lastSeenMillis = Util.getMillis();
         playing.lastSeekSyncMillis = Util.getMillis();
@@ -498,6 +502,14 @@ public final class TvPlayers {
 
     /** Pauses, resumes or jumps the page to match the shared state, gently (see {@link SyncPlan}). */
     private static void syncState(Playing playing, TvSource source, long gameTime, long now) {
+        if (playing.synced == null) {
+            playing.synced = source;
+        } else if (!source.equals(playing.synced)) {
+            // Someone paused, resumed or jumped: follow at once, not at the gentle drift-correction pace.
+            playing.synced = source;
+            playing.lastPauseSyncMillis = 0;
+            playing.lastSeekSyncMillis = 0;
+        }
         Position position = playing.position;
         if (position == null) {
             return;

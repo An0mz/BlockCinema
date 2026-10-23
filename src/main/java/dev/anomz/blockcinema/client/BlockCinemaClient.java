@@ -55,7 +55,8 @@ public final class BlockCinemaClient {
 
     private static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.level != null && minecraft.player != null && ++ticks % 5 == 0) {
+        // Ten times a second: a pause or a jump someone makes shows quickly.
+        if (minecraft.level != null && minecraft.player != null && ++ticks % 2 == 0) {
             TvPlayers.tick(minecraft.level, minecraft.player);
         }
     }
