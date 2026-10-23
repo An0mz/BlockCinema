@@ -8,13 +8,11 @@ import dev.anomz.blockcinema.network.ChangeTvPayload;
 import dev.anomz.blockcinema.network.ControlTvPayload;
 import dev.anomz.blockcinema.network.RotateTvPayload;
 import dev.anomz.blockcinema.network.TvRequests;
-import net.minecraft.world.item.CreativeModeTabs;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.neoforge.common.NeoForge;
-import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 
@@ -26,18 +24,8 @@ public final class BlockCinema {
     public BlockCinema(IEventBus modEventBus, ModContainer container) {
         container.registerConfig(ModConfig.Type.SERVER, TvServerConfig.SPEC);
         BlockCinemaRegistries.register(modEventBus);
-        modEventBus.addListener(BlockCinema::onBuildCreativeTabs);
         modEventBus.addListener(BlockCinema::onRegisterPayloads);
         NeoForge.EVENT_BUS.addListener(BlockCinema::onLoggedOut);
-    }
-
-    private static void onBuildCreativeTabs(BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey() == CreativeModeTabs.FUNCTIONAL_BLOCKS) {
-            event.accept(BlockCinemaRegistries.TV_ITEM);
-            event.accept(BlockCinemaRegistries.DIAGONAL_TV_ITEM);
-        } else if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES) {
-            event.accept(BlockCinemaRegistries.REMOTE);
-        }
     }
 
     private static void onRegisterPayloads(RegisterPayloadHandlersEvent event) {
