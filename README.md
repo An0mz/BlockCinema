@@ -16,6 +16,7 @@ TVs only show these services through their official players. There is no address
 - **Twitch**: type a channel name or paste its link. It plays in Twitch's official embedded player.
 - **Jellyfin**: log in to your own Jellyfin server with Quick Connect (approve a code in your Jellyfin app; no password is typed into Minecraft), browse your libraries and play. Videos resume where you left them, in any Jellyfin app.
 - **Video links**: any `https://` (or `http://`) video file or `.m3u8` stream.
+- **Redstone**: a signal on any TV of a screen pauses it for everyone; when the signal stops, it plays on (a video paused by hand stays paused).
 - Media controls in the TV menu: play/pause, a seek bar, -10s/+10s, the TV's own volume and mute, and fullscreen (Space, Left/Right, Up/Down, Esc).
 - Sharp picture: big screens and fullscreen play in 1080p.
 - Sound fades with distance, following your Master and Jukebox/Note Blocks volume.

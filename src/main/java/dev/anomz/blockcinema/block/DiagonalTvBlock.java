@@ -120,6 +120,14 @@ public class DiagonalTvBlock extends BaseEntityBlock {
         return state.rotate(mirror.getRotation(state.getValue(HorizontalDirectionalBlock.FACING)));
     }
 
+    /** A redstone signal pauses the screen (see {@link TvBlockEntity#checkRedstone}). */
+    @Override
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos,
+            boolean movedByPiston) {
+        super.neighborChanged(state, level, pos, neighborBlock, neighborPos, movedByPiston);
+        TvBlockEntity.checkRedstone(level, pos, state);
+    }
+
     @Override
     protected RenderShape getRenderShape(BlockState state) {
         return RenderShape.MODEL;

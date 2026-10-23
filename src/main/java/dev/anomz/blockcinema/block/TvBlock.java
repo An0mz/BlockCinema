@@ -8,6 +8,7 @@ import net.minecraft.core.FrontAndTop;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.LevelAccessor;
 import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
@@ -109,6 +110,14 @@ public class TvBlock extends BaseEntityBlock {
     protected BlockState mirror(BlockState state, Mirror mirror) {
         return state.setValue(BlockStateProperties.ORIENTATION,
                 mirror.rotation().rotate(state.getValue(BlockStateProperties.ORIENTATION)));
+    }
+
+    /** A redstone signal pauses the screen (see {@link TvBlockEntity#checkRedstone}). */
+    @Override
+    protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos,
+            boolean movedByPiston) {
+        super.neighborChanged(state, level, pos, neighborBlock, neighborPos, movedByPiston);
+        TvBlockEntity.checkRedstone(level, pos, state);
     }
 
     @Override

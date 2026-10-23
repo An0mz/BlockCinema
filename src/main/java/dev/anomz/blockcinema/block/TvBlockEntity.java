@@ -17,6 +17,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -36,6 +37,10 @@ public class TvBlockEntity extends BlockEntity {
     private long layoutCheckedAt = Long.MIN_VALUE;
     @Nullable
     private TvSource source;
+    /** Whether a TV of the screen had a redstone signal at the last check (origin only, server side). */
+    private boolean powered;
+    /** Whether the signal paused what plays, so it resumes when the signal stops (a manual pause doesn't). */
+    private boolean pausedByRedstone;
 
     public TvBlockEntity(BlockPos pos, BlockState state) {
         super(BlockCinemaRegistries.TV_BLOCK_ENTITY.get(), pos, state);
@@ -65,9 +70,49 @@ public class TvBlockEntity extends BlockEntity {
         }
     }
 
+    /**
+     * Server side: called when a neighbor of a TV changes. A redstone signal on any TV of the screen
+     * pauses what it plays; when the signal stops, it plays on if the signal paused it.
+     */
+    public static void checkRedstone(Level level, BlockPos pos, BlockState state) {
+        if (level.isClientSide) {
+            return;
+        }
+        TvLayout layout = TvLayout.of(level, pos, state);
+        if (layout.invalid() || !(level.getBlockEntity(layout.origin()) instanceof TvBlockEntity origin)) {
+            return;
+        }
+        boolean powered = false;
+        for (int r = 0; r < layout.rows() && !powered; r++) {
+            for (int c = 0; c < layout.cols() && !powered; c++) {
+                powered = level.hasNeighborSignal(layout.cell(c, r));
+            }
+        }
+        origin.redstone(powered, level.getGameTime());
+    }
+
+    private void redstone(boolean powered, long gameTime) {
+        if (powered == this.powered) {
+            return;
+        }
+        this.powered = powered;
+        if (powered && source != null && !source.paused()) {
+            pausedByRedstone = true;
+            setSource(source.pausedAt(gameTime));
+        } else if (!powered && pausedByRedstone) {
+            pausedByRedstone = false;
+            if (source != null && source.paused()) {
+                setSource(source.resumedAt(gameTime));
+            }
+        }
+        setChanged();
+    }
+
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
+        tag.putBoolean("powered", powered);
+        tag.putBoolean("pausedByRedstone", pausedByRedstone);
         if (source != null) {
             CompoundTag saved = new CompoundTag();
             saved.putString("service", source.service().id());
@@ -85,6 +130,8 @@ public class TvBlockEntity extends BlockEntity {
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
         source = tag.contains("source") ? readSource(tag.getCompound("source")) : null;
+        powered = tag.getBoolean("powered");
+        pausedByRedstone = tag.getBoolean("pausedByRedstone");
         if (level != null && level.isClientSide) {
             trackOnClient();
         }
