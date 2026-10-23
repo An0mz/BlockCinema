@@ -83,10 +83,19 @@ public final class TvScreen extends PanelScreen {
         builtOn = source != null;
         subtitle = source == null ? Component.translatable(key("off"))
                 : Component.translatable(key("now_playing"), Component.translatable(source.service().translationKey()), source.ownerName());
+        // Header buttons, right to left after close: rotate (floor and ceiling screens), watch in the world.
+        int iconSize = 18;
+        int headerX = panelX + panelW - Ui.PAD - iconSize + 4;
+        int headerY = panelY + (Ui.HEADER - iconSize) / 2;
         if (lyingFlat()) {
-            int iconSize = 18;
-            addRenderableWidget(new IconButton(panelX + panelW - Ui.PAD - iconSize + 4 - iconSize - 4, panelY + (Ui.HEADER - iconSize) / 2,
-                    iconSize, Icon.ROTATE, Component.translatable(key("rotate")), IconButton.Style.GHOST, () -> TvRemote.rotate(screen)));
+            headerX -= iconSize + 4;
+            addRenderableWidget(new IconButton(headerX, headerY, iconSize, Icon.ROTATE, Component.translatable(key("rotate")),
+                    IconButton.Style.GHOST, () -> TvRemote.rotate(screen)));
+        }
+        if (source != null && TvPlayers.isPlaying(screen)) {
+            headerX -= iconSize + 4;
+            addRenderableWidget(new IconButton(headerX, headerY, iconSize, Icon.EYE, Component.translatable(key("watch_here")),
+                    IconButton.Style.GHOST, () -> minecraft.setScreen(new TvWatchScreen(screen))));
         }
         int x = contentLeft();
         int w = contentWidth();

@@ -395,7 +395,7 @@ public final class TvPlayers {
         double best = Double.MAX_VALUE;
         Long looked = null;
         for (Candidate candidate : candidates) {
-            Optional<Vec3> hit = box(candidate.layout()).clip(eye, end);
+            Optional<Vec3> hit = candidate.layout().bounds().clip(eye, end);
             if (hit.isPresent() && hit.get().distanceToSqr(eye) < best) {
                 best = hit.get().distanceToSqr(eye);
                 looked = candidate.tv().getBlockPos().asLong();
@@ -519,13 +519,8 @@ public final class TvPlayers {
                 playing.fullscreen || now - playing.lastSeenMillis < OUT_OF_SIGHT_MILLIS);
     }
 
-    /** The blocks the screen covers (its far corner can be on either side of the origin). */
-    private static AABB box(TvLayout layout) {
-        return new AABB(layout.origin()).minmax(new AABB(layout.cell(layout.cols() - 1, layout.rows() - 1)));
-    }
-
     private static double distance(TvLayout layout, Vec3 ear) {
-        AABB box = box(layout);
+        AABB box = layout.bounds();
         return TvVolume.distanceToBox(ear.x, ear.y, ear.z, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
     }
 

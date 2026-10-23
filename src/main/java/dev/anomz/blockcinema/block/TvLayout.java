@@ -9,6 +9,7 @@ import net.minecraft.core.FrontAndTop;
 import net.minecraft.core.Vec3i;
 import net.minecraft.world.level.BlockGetter;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.AABB;
 
 /**
  * Where one TV sits in its screen, seen from the front: {@code col} counts from the viewer's left,
@@ -75,6 +76,11 @@ public record TvLayout(BlockPos origin, ScreenFrame frame, int cols, int rows, i
     /** Whether {@code other} is a TV of the same kind as {@code state}, lying the same way. */
     static boolean sameScreen(BlockState other, BlockState state, ScreenFrame frame) {
         return other.getBlock() == state.getBlock() && frame.equals(ScreenFrame.of(other));
+    }
+
+    /** The blocks the screen covers (its far corner can be on either side of the origin). */
+    public AABB bounds() {
+        return new AABB(origin).minmax(new AABB(cell(cols - 1, rows - 1)));
     }
 
     /** Whether the screen is taller than wide, so its picture is portrait (9:16, for Shorts). */

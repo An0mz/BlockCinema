@@ -119,5 +119,7 @@
   "screen.blockcinema.next_video": "Vidéo suivante",
   "screen.blockcinema.vertical_view": "Vue verticale (Shorts)",
   "screen.blockcinema.wide_view": "Vue large",
-  "screen.blockcinema.exit_fullscreen": "Quitter le plein écran (Échap)"
+  "screen.blockcinema.exit_fullscreen": "Quitter le plein écran (Échap)",
+  "screen.blockcinema.watch_here": "Regarder dans le monde (molette : vidéo suivante)",
+  "screen.blockcinema.watch_help": "Molette : vidéo suivante / précédente   Clic ou Espace : lecture/pause   Échap : quitter"
 }
