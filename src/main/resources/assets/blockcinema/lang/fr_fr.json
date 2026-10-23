@@ -49,7 +49,6 @@
   "screen.blockcinema.fullscreen": "Plein écran",
   "screen.blockcinema.rotate": "Tourner l'image",
   "screen.blockcinema.volume": "Volume de la télé : %s %%",
-  "screen.blockcinema.fullscreen_help": "%sMolette ou clic : vidéo suivante   Espace : lecture/pause   Gauche/Droite : -10 s/+10 s   Haut/Bas : volume (%s %%)   Échap : retour",
   "screen.blockcinema.time_unknown": "--:-- / --:--",
   "screen.blockcinema.live": "En direct",
   "screen.blockcinema.play": "Lire",
@@ -116,6 +115,9 @@
   "screen.blockcinema.jellyfin.audio": "Audio : %s",
   "screen.blockcinema.jellyfin.subtitles": "Sous-titres : %s",
   "screen.blockcinema.jellyfin.subtitles_off": "Aucun",
-  "screen.blockcinema.previous_video": "Vidéo précédente (ou molette vers le haut)",
-  "screen.blockcinema.next_video": "Vidéo suivante (ou molette vers le bas)"
+  "screen.blockcinema.previous_video": "Vidéo précédente",
+  "screen.blockcinema.next_video": "Vidéo suivante",
+  "screen.blockcinema.vertical_view": "Vue verticale (Shorts)",
+  "screen.blockcinema.wide_view": "Vue large",
+  "screen.blockcinema.exit_fullscreen": "Quitter le plein écran (Échap)"
 }

@@ -28,6 +28,12 @@ class TvPageRulesTest {
         assertTrue(TvPageRules.valid(TvService.YOUTUBE, atThird));
         assertEquals("PL1234567890", TvPageRules.youtubeList(atThird));
         assertNull(TvPageRules.youtubeList("https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ"));
+        String aShort = "https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ&shorts=1";
+        assertTrue(TvPageRules.valid(TvService.YOUTUBE, aShort));
+        assertTrue(TvPageRules.youtubeShort(aShort));
+        assertFalse(TvPageRules.youtubeShort("https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ"));
+        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ&shorts=2"));
+        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://blockcinema.anomz.dev/youtube.html?list=PL1234567890&shorts=1"));
         // An index only makes sense in a playlist.
         assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ&index=2"));
         assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://blockcinema.anomz.dev/youtube.html?list=PL1234567890&index=-1"));

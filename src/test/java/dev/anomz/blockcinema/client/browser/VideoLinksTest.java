@@ -15,7 +15,7 @@ class VideoLinksTest {
         assertEquals(Optional.of(YT + "v=dQw4w9WgXcQ"), VideoLinks.youtube("dQw4w9WgXcQ"));
         assertEquals(Optional.of(YT + "v=dQw4w9WgXcQ"), VideoLinks.youtube("https://www.youtube.com/watch?v=dQw4w9WgXcQ&t=42"));
         assertEquals(Optional.of(YT + "v=dQw4w9WgXcQ"), VideoLinks.youtube("youtu.be/dQw4w9WgXcQ?si=abc"));
-        assertEquals(Optional.of(YT + "v=dQw4w9WgXcQ"), VideoLinks.youtube("https://youtube.com/shorts/dQw4w9WgXcQ"));
+        assertEquals(Optional.of(YT + "v=dQw4w9WgXcQ&shorts=1"), VideoLinks.youtube("https://youtube.com/shorts/dQw4w9WgXcQ"));
         assertEquals(Optional.of(YT + "v=dQw4w9WgXcQ"), VideoLinks.youtube("https://m.youtube.com/live/dQw4w9WgXcQ"));
         assertEquals(Optional.of(YT + "list=PL1234567890"), VideoLinks.youtube("https://www.youtube.com/playlist?list=PL1234567890"));
         assertEquals(Optional.of(YT + "v=dQw4w9WgXcQ&list=PL1234567890"),

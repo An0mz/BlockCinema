@@ -16,7 +16,7 @@ TVs only show these services through their official players. There is no address
 - **Twitch**: type a channel name or paste its link. It plays in Twitch's official embedded player.
 - **Jellyfin**: log in to your own Jellyfin server with Quick Connect (approve a code in your Jellyfin app; no password is typed into Minecraft), browse your libraries and play, with a choice of audio track and subtitles. Videos resume where you left them, in any Jellyfin app.
 - **Video links**: any `https://` (or `http://`) video file or `.m3u8` stream.
-- **Shorts-style scrolling**: in fullscreen, scroll or click for the next video (scroll up for the previous one); the TV menu has previous and next buttons too. In a YouTube playlist (a Shorts playlist, for one) this moves through the playlist for everyone; otherwise it skips through the queue.
+- **Fullscreen**: a control bar below the picture (seek, play/pause, ±10 s, previous/next, volume). Shorts links open in a vertical 9:16 view, Shorts-style: scroll or press up/down for the next or previous video, with the buttons beside the picture. Any video can switch between the wide and the vertical view. In a YouTube playlist, next/previous move through the playlist for everyone; otherwise next skips to the queued video.
 - **Portrait screens**: a wall of TVs taller than wide shows a vertical 9:16 picture, so Shorts fill it.
 - **Queue**: while a TV plays, add more videos to its queue from the link screen or the Jellyfin library; they play one after another for everyone, and the TV menu shows what's up next (remove entries or skip).
 - **Redstone**: a signal on any TV of a screen pauses it for everyone; when the signal stops, it plays on (a video paused by hand stays paused).

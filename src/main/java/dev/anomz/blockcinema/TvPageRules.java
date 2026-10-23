@@ -141,21 +141,32 @@ public final class TvPageRules {
         String video = query.get("v");
         String list = query.get("list");
         String index = query.get("index");
-        if (video == null && list == null || index != null && list == null
-                || query.size() != (video != null ? 1 : 0) + (list != null ? 1 : 0) + (index != null ? 1 : 0)) {
+        String isShort = query.get("shorts");
+        if (video == null && list == null || index != null && list == null || isShort != null && (video == null || list != null)
+                || query.size() != (video != null ? 1 : 0) + (list != null ? 1 : 0) + (index != null ? 1 : 0) + (isShort != null ? 1 : 0)) {
             return false;
         }
         return (video == null || VIDEO_ID.matcher(video).matches()) && (list == null || LIST_ID.matcher(list).matches())
-                && (index == null || LIST_INDEX.matcher(index).matches());
+                && (index == null || LIST_INDEX.matcher(index).matches()) && (isShort == null || "1".equals(isShort));
+    }
+
+    /** Whether a YouTube page plays a Short (it came from a shorts link): fullscreen starts in the vertical view. */
+    public static boolean youtubeShort(String page) {
+        return "1".equals(youtubeParam(page, "shorts"));
     }
 
     /** The playlist a YouTube page plays, or null if it plays a single video. */
     @Nullable
     public static String youtubeList(String page) {
+        return youtubeParam(page, "list");
+    }
+
+    @Nullable
+    private static String youtubeParam(String page, String name) {
         try {
             URI uri = new URI(page);
             Map<String, String> query = query(uri.getRawQuery());
-            return query == null || !"/youtube.html".equals(uri.getRawPath()) ? null : query.get("list");
+            return query == null || !"/youtube.html".equals(uri.getRawPath()) ? null : query.get(name);
         } catch (URISyntaxException e) {
             return null;
         }

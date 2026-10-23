@@ -41,10 +41,12 @@ public final class VideoLinks {
         String host = uri.getHost().toLowerCase(Locale.ROOT);
         String path = uri.getPath() == null ? "" : uri.getPath();
         String video = null;
+        boolean isShort = false;
         if (host.equals("youtu.be")) {
             video = firstSegment(path);
         } else if (YOUTUBE_HOSTS.contains(host)) {
             video = path.equals("/watch") ? query(uri, "v") : afterPrefix(path, "/shorts/", "/live/", "/embed/");
+            isShort = path.startsWith("/shorts/");
         } else {
             return Optional.empty();
         }
@@ -54,7 +56,8 @@ public final class VideoLinks {
         if (!videoOk && !listOk) {
             return Optional.empty();
         }
-        return Optional.of(youtubePage(videoOk ? video : null, listOk ? list : null));
+        String page = youtubePage(videoOk ? video : null, listOk ? list : null);
+        return Optional.of(isShort && videoOk && !listOk ? page + "&shorts=1" : page);
     }
 
     /** A Twitch channel name or channel link. */

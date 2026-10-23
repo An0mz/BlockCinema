@@ -23,5 +23,9 @@ public enum Icon {
     MUTE,
     ROTATE,
     PREVIOUS,
-    NEXT
+    NEXT,
+    UP,
+    DOWN,
+    PHONE,
+    WIDE
 }

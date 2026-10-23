@@ -21,7 +21,6 @@ import dev.anomz.blockcinema.client.screen.ui.PanelScreen;
 import dev.anomz.blockcinema.client.screen.ui.ServiceTile;
 import dev.anomz.blockcinema.client.screen.ui.TextButton;
 import dev.anomz.blockcinema.client.screen.ui.Ui;
-import dev.anomz.blockcinema.client.screen.ui.UiSlider;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -47,7 +46,6 @@ public final class TvScreen extends PanelScreen {
     private TimeBar timeBar;
     private VolumeSlider volume;
     private boolean builtOn;
-    private final SkipGate scrollGate = new SkipGate();
     /** Asked once per opening: a YouTube TV is on but this player hasn't agreed to YouTube's terms. */
     private boolean askedToAgree;
     private float volumeBeforeMute = 1;
@@ -170,7 +168,7 @@ public final class TvScreen extends PanelScreen {
                 Component.translatable(key("skip_forward"), SKIP_SECONDS), IconButton.Style.GHOST, () -> TvRemote.skip(screen, SKIP_SECONDS)));
         addRenderableWidget(new IconButton(x + 6, rowY + 2, 20, () -> TvPlayers.volume(screen) <= 0 ? Icon.MUTE : Icon.VOLUME,
                 Component.translatable(key("mute")), IconButton.Style.GHOST, this::toggleMute));
-        volume = addRenderableWidget(new VolumeSlider(x + 28, rowY + 6, 44, TvPlayers.volume(screen)));
+        volume = addRenderableWidget(new VolumeSlider(x + 28, rowY + 6, 44, screen));
         addRenderableWidget(new IconButton(mid - 12 - 6 - 20 - 4 - 20, rowY + 2, 20, Icon.PREVIOUS,
                 Component.translatable(key("previous_video")), IconButton.Style.GHOST, () -> TvRemote.skipVideo(screen, -1)));
         addRenderableWidget(new IconButton(mid + 12 + 6 + 20 + 4, rowY + 2, 20, Icon.NEXT,
@@ -207,19 +205,6 @@ public final class TvScreen extends PanelScreen {
             TvPlayers.setVolume(screen, volumeBeforeMute);
         }
         volume.show(TvPlayers.volume(screen));
-    }
-
-    /** Shorts-style: the wheel goes to the next (down) or previous (up) video, unless a slider takes it. */
-    @Override
-    public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) {
-            return true;
-        }
-        if (timeBar != null && scrollY != 0 && scrollGate.allow()) {
-            TvRemote.skipVideo(screen, scrollY < 0 ? 1 : -1);
-            return true;
-        }
-        return false;
     }
 
     @Override
@@ -330,20 +315,4 @@ public final class TvScreen extends PanelScreen {
         }
     }
 
-    private final class VolumeSlider extends UiSlider {
-        VolumeSlider(int x, int y, int width, double value) {
-            super(x, y, width, 12, value);
-            updateMessage();
-        }
-
-        @Override
-        protected void updateMessage() {
-            setMessage(Component.translatable(key("volume"), Math.round(value * 100)));
-        }
-
-        @Override
-        protected void applyValue() {
-            TvPlayers.setVolume(screen, (float) value);
-        }
-    }
 }

@@ -111,8 +111,10 @@ public final class TvPlayers {
         Consumer<Position> onStop;
         /** Where the YouTube playlist is, as the page last said; -1 if unknown. */
         int listIndex = -1;
-        /** The browser is portrait (9:16), on a screen taller than wide. */
+        /** The browser is portrait (9:16), on a screen taller than wide or in the vertical fullscreen view. */
         boolean portrait;
+        /** Fullscreen shows the vertical (Shorts) view. */
+        boolean verticalView;
         /** Whether this player already told the server the video ended (once per video). */
         boolean endedSent;
         /** What went wrong, as the page or the browser said (see {@link #error}); null when fine. */
@@ -233,7 +235,7 @@ public final class TvPlayers {
         return playing == null ? -1 : playing.listIndex;
     }
 
-    /** Whether the screen's picture is portrait (9:16): screens taller than wide, for Shorts. */
+    /** Whether the screen's picture is portrait (9:16): screens taller than wide, and the vertical fullscreen view. */
     public static boolean portrait(BlockPos origin) {
         Playing playing = PLAYING.get(origin.asLong());
         return playing != null && playing.portrait;
@@ -281,6 +283,14 @@ public final class TvPlayers {
             playing.fullscreen = fullscreen;
             playing.volume = -1;
             playing.lastSeenMillis = Util.getMillis();
+        }
+    }
+
+    /** Whether fullscreen shows the vertical (9:16, Shorts) view; the browser turns to match. */
+    public static void setVerticalView(BlockPos origin, boolean vertical) {
+        Playing playing = PLAYING.get(origin.asLong());
+        if (playing != null) {
+            playing.verticalView = vertical;
         }
     }
 
@@ -434,7 +444,7 @@ public final class TvPlayers {
             playing = start(origin, playing, withStart(page, source.position(level.getGameTime())), key, resumeKey, onStop);
         }
         wanted.add(origin.asLong());
-        boolean portrait = layout.portrait();
+        boolean portrait = playing.fullscreen ? playing.verticalView : layout.portrait();
         double longSide = Math.max(layout.cols() * layout.frame().cellWidth(), layout.rows());
         int width = switch (BlockCinemaClientConfig.quality()) {
             case P720 -> WIDTH;
