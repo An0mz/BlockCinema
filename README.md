@@ -34,7 +34,7 @@ TVs only show these services through their official players. There is no address
 
 - Minecraft 1.21.1 with NeoForge 21.1.x (Java 21)
 - Install Block Cinema on **both** the client and the server.
-- Players also need [MCEF](https://modrinth.com/mod/mcef) (2.1.6 for 1.21.1) on their client: it plays the video. The server doesn't need it.
+- Players also need [MCEF](https://www.curseforge.com/minecraft/mc-mods/mcef) (2.1.6 for 1.21.1) on their client: it plays the video. The server doesn't need it.
 - On first start, MCEF downloads Chromium for your system (Windows, Linux or macOS) from its own server. The TVs work once that's done.
 
 ## Getting started
