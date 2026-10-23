@@ -123,5 +123,10 @@
   "screen.blockcinema.watch_here": "Regarder dans le monde",
   "screen.blockcinema.watch_help": "Molette : volume   Clic ou Espace : lecture/pause   Échap : quitter",
   "screen.blockcinema.nothing_next": "Rien après : ajoutez des vidéos à la file",
-  "blockcinema.configuration.youtubeCaptions": "Sous-titres YouTube"
+  "blockcinema.configuration.youtubeCaptions": "Sous-titres YouTube",
+  "blockcinema.configuration.showYoutube": "Afficher YouTube",
+  "blockcinema.configuration.showTwitch": "Afficher Twitch",
+  "blockcinema.configuration.showJellyfin": "Afficher Jellyfin",
+  "blockcinema.configuration.showVideoLinks": "Afficher les liens vidéo",
+  "screen.blockcinema.no_services": "Tous les services sont masqués dans vos paramètres."
 }

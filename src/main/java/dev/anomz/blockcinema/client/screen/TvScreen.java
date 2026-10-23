@@ -1,5 +1,6 @@
 package dev.anomz.blockcinema.client.screen;
 
+import java.util.Arrays;
 import java.util.List;
 
 import dev.anomz.blockcinema.BlockCinema;
@@ -11,6 +12,7 @@ import dev.anomz.blockcinema.block.TvBlock;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.client.Agreements;
+import dev.anomz.blockcinema.client.BlockCinemaClientConfig;
 import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.client.browser.VideoLinks;
@@ -74,7 +76,18 @@ public final class TvScreen extends PanelScreen {
     @Override
     protected int panelHeight() {
         boolean on = TvRemote.source(screen) != null;
-        return Ui.HEADER + Ui.PAD + (on ? CARD_H + 12 : 0) + queueHeight() + 14 + 2 * TILE_H + GAP + 8 + 14 + Ui.PAD;
+        return Ui.HEADER + Ui.PAD + (on ? CARD_H + 12 : 0) + queueHeight() + 14 + tilesHeight() + 8 + 14 + Ui.PAD;
+    }
+
+    /** The services this player wants in the menu (Player Settings), in order. */
+    private static List<TvService> shownServices() {
+        return Arrays.stream(TvService.values()).filter(BlockCinemaClientConfig::shows).toList();
+    }
+
+    /** Two tiles a row; with none, a line saying they're all hidden. */
+    private int tilesHeight() {
+        int rows = (shownServices().size() + 1) / 2;
+        return rows == 0 ? font.lineHeight : rows * TILE_H + (rows - 1) * GAP;
     }
 
     @Override
@@ -115,17 +128,19 @@ public final class TvScreen extends PanelScreen {
         sectionY = y;
         y += 14;
         int tileW = (w - GAP) / 2;
-        TvService[] services = TvService.values();
-        for (int i = 0; i < services.length; i++) {
-            TvService service = services[i];
+        List<TvService> services = shownServices();
+        for (int i = 0; i < services.size(); i++) {
+            TvService service = services.get(i);
             boolean enabled = TvServerConfig.enabled(service);
-            ServiceTile tile = addRenderableWidget(new ServiceTile(x + i % 2 * (tileW + GAP), y + i / 2 * (TILE_H + GAP), tileW, TILE_H,
+            // An odd last tile takes the whole row.
+            int width = i == services.size() - 1 && i % 2 == 0 ? w : tileW;
+            ServiceTile tile = addRenderableWidget(new ServiceTile(x + i % 2 * (tileW + GAP), y + i / 2 * (TILE_H + GAP), width, TILE_H,
                     icon(service), Component.translatable(service.translationKey()),
                     // The server's settings (synced to this client); the server checks them again.
                     Component.translatable(enabled ? key("tile." + service.id()) : key("service_disabled")), () -> open(service)));
             tile.active = enabled;
         }
-        statusY = y + 2 * TILE_H + GAP + 8;
+        statusY = y + tilesHeight() + 8;
         // Always reachable, as YouTube's policies ask.
         Component privacy = Component.translatable(key("privacy"));
         int privacyW = font.width(privacy) + 12;
@@ -321,6 +336,9 @@ public final class TvScreen extends PanelScreen {
             }
         }
         g.drawString(font, Component.translatable(key("watch")), x, sectionY, Ui.TEXT_FAINT, false);
+        if (shownServices().isEmpty()) {
+            g.drawString(font, Component.translatable(key("no_services")), x, sectionY + 14, Ui.TEXT_DIM, false);
+        }
         String error = TvPlayers.error(screen);
         if (error != null && status.getString().isEmpty()) {
             g.drawString(font, font.plainSubstrByWidth(Component.translatable(key("error." + error)).getString(), w - 110),

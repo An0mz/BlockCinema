@@ -123,5 +123,10 @@
   "screen.blockcinema.watch_here": "Watch in the world",
   "screen.blockcinema.watch_help": "Scroll: volume   Click or Space: play/pause   Esc: leave",
   "screen.blockcinema.nothing_next": "Nothing next: queue more videos",
-  "blockcinema.configuration.youtubeCaptions": "YouTube Captions"
+  "blockcinema.configuration.youtubeCaptions": "YouTube Captions",
+  "blockcinema.configuration.showYoutube": "Show YouTube",
+  "blockcinema.configuration.showTwitch": "Show Twitch",
+  "blockcinema.configuration.showJellyfin": "Show Jellyfin",
+  "blockcinema.configuration.showVideoLinks": "Show Video Links",
+  "screen.blockcinema.no_services": "Every service is hidden in your player settings."
 }

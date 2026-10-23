@@ -1,5 +1,6 @@
 package dev.anomz.blockcinema.client;
 
+import dev.anomz.blockcinema.TvService;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
 /**
@@ -38,6 +39,13 @@ public final class BlockCinemaClientConfig {
                     "YouTube would turn them on by itself.")
             .define("youtubeCaptions", false);
 
+    private static final ModConfigSpec.BooleanValue SHOW_YOUTUBE = BUILDER
+            .comment("Which services the TV menu offers you. A hidden one still plays when someone else puts it on a TV.")
+            .define("showYoutube", true);
+    private static final ModConfigSpec.BooleanValue SHOW_TWITCH = BUILDER.define("showTwitch", true);
+    private static final ModConfigSpec.BooleanValue SHOW_JELLYFIN = BUILDER.define("showJellyfin", true);
+    private static final ModConfigSpec.BooleanValue SHOW_VIDEO_LINKS = BUILDER.define("showVideoLinks", true);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private BlockCinemaClientConfig() {
@@ -62,6 +70,19 @@ public final class BlockCinemaClientConfig {
 
     public static boolean youtubeCaptions() {
         return SPEC.isLoaded() && CAPTIONS.get();
+    }
+
+    /** Whether the TV menu offers this service to this player. */
+    public static boolean shows(TvService service) {
+        if (!SPEC.isLoaded()) {
+            return true;
+        }
+        return switch (service) {
+            case YOUTUBE -> SHOW_YOUTUBE.get();
+            case TWITCH -> SHOW_TWITCH.get();
+            case JELLYFIN -> SHOW_JELLYFIN.get();
+            case DIRECT_LINK -> SHOW_VIDEO_LINKS.get();
+        };
     }
 
     public static float startVolume() {
