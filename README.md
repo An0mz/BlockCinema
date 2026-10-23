@@ -59,13 +59,16 @@ The server checks every request: the service is on, the link has the right form,
 
 ## Privacy
 
+The full [privacy policy](PRIVACY.md) and [terms of use](TERMS.md) are in this repository. In short:
+
+
 - Nothing is sent anywhere you didn't choose: the TV only contacts the service you picked (YouTube, Twitch, your Jellyfin server or the link you entered), plus MCEF's first-start download.
 - Your Jellyfin login token is saved on your computer only (`config/blockcinema/jellyfin.json`) and is never sent to the Minecraft server or other players. A Jellyfin TV shares only the server's ID and the video's ID.
 - Where you stopped YouTube videos and links is saved in `config/blockcinema/positions.json`, on your computer.
 
 ## Notes on services
 
-- YouTube plays under [YouTube's API Services terms](https://developers.google.com/youtube/terms/api-services-terms-of-service): the official player is never covered or changed, ads aren't blocked, and a YouTube TV pauses when it has been out of sight for a few seconds and continues when you look at it again.
+- YouTube plays through YouTube API Services, under [YouTube's API Services terms](https://developers.google.com/youtube/terms/api-services-terms-of-service): the official player in privacy-enhanced mode, never covered or changed, ads aren't blocked, and a YouTube TV pauses when it has been out of sight for a few seconds and continues when you look at it again. Before YouTube plays for you, the game asks you to agree to the [YouTube Terms of Service](https://www.youtube.com/t/terms), the [Google Privacy Policy](http://www.google.com/policies/privacy) and Block Cinema's [privacy policy](PRIVACY.md) and [terms](TERMS.md).
 - Netflix, Disney+, Prime Video and other services with DRM aren't supported and can't be: they need a licensed, certified browser.
 - Block Cinema isn't affiliated with YouTube, Twitch, Jellyfin or any other service. Their names are trademarks of their owners.
 

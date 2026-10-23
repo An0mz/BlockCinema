@@ -19,6 +19,7 @@ import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
+import dev.anomz.blockcinema.client.Agreements;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinWatch;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -258,6 +259,10 @@ public final class TvPlayers {
             String page = key;
             String resumeKey = key;
             Consumer<Position> onStop = NOTHING;
+            if (source.service() == TvService.YOUTUBE && !Agreements.youtube()) {
+                // YouTube plays only for players who agreed to its terms; the others see a card.
+                return;
+            }
             if (source.service() == TvService.JELLYFIN) {
                 // Streamed with this player's own Jellyfin login, once that's set up; until then (or without
                 // a login on that server) the screen shows who is watching.

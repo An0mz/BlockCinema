@@ -200,9 +200,9 @@ publishing {
     }
 }
 
-// Ship the mod's license, and hls.js's next to the bundled copy of it.
+// Ship the mod's license, hls.js's next to the bundled copy of it, and the privacy policy and terms.
 tasks.named('jar', Jar) {
-    from('LICENSE', 'LICENSE-Apache-2.0.txt', 'THIRD-PARTY-NOTICES.md')
+    from('LICENSE', 'LICENSE-Apache-2.0.txt', 'THIRD-PARTY-NOTICES.md', 'PRIVACY.md', 'TERMS.md')
 }
 
 tasks.named('test', Test) {

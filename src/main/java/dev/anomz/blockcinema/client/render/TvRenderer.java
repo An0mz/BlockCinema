@@ -13,6 +13,7 @@ import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.block.ScreenFrame;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
+import dev.anomz.blockcinema.client.Agreements;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinWatch;
 import net.minecraft.client.Minecraft;
@@ -117,21 +118,30 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
     }
 
     /**
-     * A Jellyfin TV this player can't stream (no login on that server, no access, or still loading) says
-     * who is watching and why there is no picture. Drawn once, by the screen's origin TV (this one,
-     * bottom-left), centered on the whole screen.
+     * A TV playing something this player can't see says what and why: Jellyfin without a login on that
+     * server, no access or still loading, or YouTube before agreeing to its terms. Drawn once, by the
+     * screen's origin TV (this one, bottom-left), centered on the whole screen.
      */
     private static void drawCard(TvBlockEntity origin, TvLayout layout, PoseStack poseStack, MultiBufferSource buffers,
             float picW, float screenW, float cell, float front) {
         TvSource source = origin.source();
-        if (source == null || source.service() != TvService.JELLYFIN || TvPlayers.isPlaying(origin.getBlockPos())) {
+        if (source == null || TvPlayers.isPlaying(origin.getBlockPos())) {
+            return;
+        }
+        Component text;
+        String why;
+        if (source.service() == TvService.JELLYFIN) {
+            text = Component.translatable("screen." + BlockCinema.MODID + ".jellyfin_card", source.ownerName());
+            String[] ids = TvPageRules.jellyfinIds(source.page());
+            why = ids == null || !JellyfinWatch.canWatch(ids[0]) ? "jellyfin_card_log_in"
+                    : JellyfinWatch.failed(source.page()) ? "jellyfin_card_no_access" : "jellyfin_card_loading";
+        } else if (source.service() == TvService.YOUTUBE && !Agreements.youtube()) {
+            text = Component.translatable(source.service().translationKey());
+            why = "youtube_card_agree";
+        } else {
             return;
         }
         Font font = Minecraft.getInstance().font;
-        Component text = Component.translatable("screen." + BlockCinema.MODID + ".jellyfin_card", source.ownerName());
-        String[] ids = TvPageRules.jellyfinIds(source.page());
-        String why = ids == null || !JellyfinWatch.canWatch(ids[0]) ? "jellyfin_card_log_in"
-                : JellyfinWatch.failed(source.page()) ? "jellyfin_card_no_access" : "jellyfin_card_loading";
         Component hint = Component.translatable("screen." + BlockCinema.MODID + "." + why);
         int width = Math.max(font.width(text), font.width(hint));
         float scale = Math.min(picW * 0.8f / Math.max(1, width), 1 / 32f);

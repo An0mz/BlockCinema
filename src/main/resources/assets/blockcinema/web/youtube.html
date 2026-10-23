@@ -88,6 +88,8 @@
       vars.list = list;
     }
     player = new YT.Player('player', {
+      // Privacy-enhanced mode: the player stores less about the viewer.
+      host: 'https://www.youtube-nocookie.com',
       width: '100%',
       height: '100%',
       videoId: video || undefined,

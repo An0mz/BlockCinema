@@ -7,6 +7,7 @@ import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.block.TvBlock;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
+import dev.anomz.blockcinema.client.Agreements;
 import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.client.browser.VideoLinks;
@@ -15,6 +16,7 @@ import dev.anomz.blockcinema.client.screen.ui.Icon;
 import dev.anomz.blockcinema.client.screen.ui.IconButton;
 import dev.anomz.blockcinema.client.screen.ui.PanelScreen;
 import dev.anomz.blockcinema.client.screen.ui.ServiceTile;
+import dev.anomz.blockcinema.client.screen.ui.TextButton;
 import dev.anomz.blockcinema.client.screen.ui.Ui;
 import dev.anomz.blockcinema.client.screen.ui.UiSlider;
 import net.minecraft.client.gui.GuiGraphics;
@@ -40,6 +42,8 @@ public final class TvScreen extends PanelScreen {
     private TimeBar timeBar;
     private VolumeSlider volume;
     private boolean builtOn;
+    /** Asked once per opening: a YouTube TV is on but this player hasn't agreed to YouTube's terms. */
+    private boolean askedToAgree;
     private float volumeBeforeMute = 1;
     private int cardY;
     private int sectionY;
@@ -64,7 +68,7 @@ public final class TvScreen extends PanelScreen {
     @Override
     protected int panelHeight() {
         boolean on = TvRemote.source(screen) != null;
-        return Ui.HEADER + Ui.PAD + (on ? CARD_H + 12 : 0) + 14 + 2 * TILE_H + GAP + 8 + 10 + Ui.PAD;
+        return Ui.HEADER + Ui.PAD + (on ? CARD_H + 12 : 0) + 14 + 2 * TILE_H + GAP + 8 + 14 + Ui.PAD;
     }
 
     @Override
@@ -101,6 +105,11 @@ public final class TvScreen extends PanelScreen {
             tile.active = enabled;
         }
         statusY = y + 2 * TILE_H + GAP + 8;
+        // Always reachable, as YouTube's policies ask.
+        Component privacy = Component.translatable(key("privacy"));
+        int privacyW = font.width(privacy) + 12;
+        addRenderableWidget(new TextButton(x + w - privacyW, statusY - 3, privacyW, 14, privacy, false,
+                () -> minecraft.setScreen(new AgreementScreen(this, null))));
     }
 
     private static Icon icon(TvService service) {
@@ -162,6 +171,12 @@ public final class TvScreen extends PanelScreen {
 
     @Override
     public void tick() {
+        TvSource playing = TvRemote.source(screen);
+        if (!askedToAgree && playing != null && playing.service() == TvService.YOUTUBE && !Agreements.youtube()) {
+            askedToAgree = true;
+            minecraft.setScreen(new AgreementScreen(this, () -> minecraft.setScreen(this)));
+            return;
+        }
         // Turned: the screen's origin is another corner now.
         if (minecraft.level != null && minecraft.level.getBlockEntity(screen) instanceof TvBlockEntity tv) {
             TvLayout layout = tv.layout(minecraft.level.getGameTime());
@@ -186,7 +201,14 @@ public final class TvScreen extends PanelScreen {
             return;
         }
         switch (service) {
-            case YOUTUBE -> minecraft.setScreen(new LinkScreen(this, screen, service, VideoLinks::youtube));
+            case YOUTUBE -> {
+                Runnable link = () -> minecraft.setScreen(new LinkScreen(this, screen, service, VideoLinks::youtube));
+                if (Agreements.youtube()) {
+                    link.run();
+                } else {
+                    minecraft.setScreen(new AgreementScreen(this, link));
+                }
+            }
             case TWITCH -> minecraft.setScreen(new LinkScreen(this, screen, service, VideoLinks::twitch));
             case JELLYFIN -> {
                 JellyfinLogin login = JellyfinLogin.current();
@@ -229,7 +251,7 @@ public final class TvScreen extends PanelScreen {
         }
         g.drawString(font, Component.translatable(key("watch")), x, sectionY, Ui.TEXT_FAINT, false);
         if (!status.getString().isEmpty()) {
-            g.drawCenteredString(font, status, panelX + panelW / 2, statusY, Ui.TEXT_DIM);
+            g.drawString(font, status, contentLeft(), statusY, Ui.TEXT_DIM, false);
         }
     }
 
