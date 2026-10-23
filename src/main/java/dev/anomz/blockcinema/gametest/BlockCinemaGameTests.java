@@ -10,6 +10,7 @@ import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.network.ChangeTvPayload;
 import dev.anomz.blockcinema.network.ControlTvPayload;
+import dev.anomz.blockcinema.network.QueueTvPayload;
 import dev.anomz.blockcinema.network.RotateTvPayload;
 import dev.anomz.blockcinema.network.TvRequests;
 import dev.anomz.blockcinema.network.VideoEndedPayload;
@@ -155,6 +156,31 @@ public final class BlockCinemaGameTests {
         next(player);
         VideoEndedPayload.apply(player, new VideoEndedPayload(layout.origin(), YOUTUBE_A));
         helper.assertTrue(YOUTUBE_B.equals(tv.source().page()) && tv.queue().isEmpty(), "the next video plays when one ends");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
+    public static void previousGoesBackThroughTheQueue(GameTestHelper helper) {
+        wall(helper, 1, 1);
+        TvLayout layout = layoutAt(helper, new BlockPos(1, 1, 4));
+        ServerPlayer player = viewer(helper);
+        ChangeTvPayload.apply(player, ChangeTvPayload.of(layout.origin(), TvService.YOUTUBE, YOUTUBE_A, 0));
+        next(player);
+        ChangeTvPayload.apply(player, ChangeTvPayload.queued(layout.origin(), TvService.YOUTUBE, YOUTUBE_B, "B"));
+        next(player);
+        QueueTvPayload.apply(player, new QueueTvPayload(layout.origin(), QueueTvPayload.NEXT, 0));
+        TvBlockEntity tv = origin(helper, layout);
+        helper.assertTrue(YOUTUBE_B.equals(tv.source().page()) && tv.queue().isEmpty(), "next plays the queued video");
+
+        next(player);
+        QueueTvPayload.apply(player, new QueueTvPayload(layout.origin(), QueueTvPayload.PREVIOUS, 0));
+        helper.assertTrue(YOUTUBE_A.equals(tv.source().page()) && tv.queue().size() == 1
+                && YOUTUBE_B.equals(tv.queue().get(0).page()), "previous goes back, and what played returns to the queue");
+
+        next(player);
+        QueueTvPayload.apply(player, new QueueTvPayload(layout.origin(), QueueTvPayload.PREVIOUS, 0));
+        helper.assertTrue(YOUTUBE_A.equals(tv.source().page()) && tv.source().position(helper.getLevel().getGameTime()) == 0,
+                "with nothing before, previous starts over");
         helper.succeed();
     }
 

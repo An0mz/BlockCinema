@@ -179,9 +179,9 @@ public final class TvScreen extends PanelScreen {
                 Component.translatable(key("mute")), IconButton.Style.GHOST, this::toggleMute));
         volume = addRenderableWidget(new VolumeSlider(x + 28, rowY + 6, 44, screen));
         addRenderableWidget(new IconButton(mid - 12 - 6 - 20 - 4 - 20, rowY + 2, 20, Icon.PREVIOUS,
-                Component.translatable(key("previous_video")), IconButton.Style.GHOST, () -> TvRemote.skipVideo(screen, -1)));
+                Component.translatable(key("previous_video")), IconButton.Style.GHOST, () -> skipVideo(-1)));
         addRenderableWidget(new IconButton(mid + 12 + 6 + 20 + 4, rowY + 2, 20, Icon.NEXT,
-                Component.translatable(key("next_video")), IconButton.Style.GHOST, () -> TvRemote.skipVideo(screen, 1)));
+                Component.translatable(key("next_video")), IconButton.Style.GHOST, () -> skipVideo(1)));
         IconButton fullscreen = addRenderableWidget(new IconButton(x + w - 6 - 20 - 4 - 20, rowY + 2, 20, Icon.FULLSCREEN,
                 Component.translatable(key("fullscreen")), IconButton.Style.GHOST, () -> minecraft.setScreen(new TvFullscreenScreen(this, screen))));
         // Someone else's Jellyfin has no picture here.
@@ -203,6 +203,13 @@ public final class TvScreen extends PanelScreen {
     private boolean paused() {
         TvSource source = TvRemote.source(screen);
         return source == null || source.paused();
+    }
+
+    private void skipVideo(int direction) {
+        Component problem = TvRemote.skipVideo(screen, direction);
+        if (problem != null) {
+            timeBar.notice(problem);
+        }
     }
 
     private void toggleMute() {

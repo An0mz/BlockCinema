@@ -12,6 +12,8 @@ import java.util.regex.Pattern;
 
 import org.jetbrains.annotations.Nullable;
 
+import dev.anomz.blockcinema.TvPageRules;
+
 /**
  * Turns what the player typed into one of our player pages. For YouTube and Twitch only video/playlist
  * IDs and channel names are passed on, so nothing else can be loaded; direct links only ever play as video.
@@ -19,6 +21,7 @@ import org.jetbrains.annotations.Nullable;
 public final class VideoLinks {
     private static final Pattern VIDEO_ID = Pattern.compile("[A-Za-z0-9_-]{11}");
     private static final Pattern LIST_ID = Pattern.compile("[A-Za-z0-9_-]{2,64}");
+    private static final Pattern CHANNEL_ID = Pattern.compile("UC[A-Za-z0-9_-]{22}");
     private static final Pattern TWITCH_CHANNEL = Pattern.compile("[A-Za-z0-9_]{1,25}");
     private static final Set<String> YOUTUBE_HOSTS = Set.of("youtube.com", "www.youtube.com", "m.youtube.com",
             "music.youtube.com", "youtube-nocookie.com", "www.youtube-nocookie.com");
@@ -28,7 +31,7 @@ public final class VideoLinks {
     private VideoLinks() {
     }
 
-    /** A YouTube link (watch, youtu.be, shorts, live, embed or playlist) or a bare video ID. */
+    /** A YouTube link (watch, youtu.be, shorts, live, embed, playlist or channel ID) or a bare video ID. */
     public static Optional<String> youtube(String input) {
         String text = input.trim();
         if (VIDEO_ID.matcher(text).matches()) {
@@ -45,6 +48,12 @@ public final class VideoLinks {
         if (host.equals("youtu.be")) {
             video = firstSegment(path);
         } else if (YOUTUBE_HOSTS.contains(host)) {
+            String channel = afterPrefix(path, "/channel/");
+            if (channel != null && CHANNEL_ID.matcher(channel).matches()) {
+                // A channel plays as its uploads playlist: its Shorts from a shorts link, else all its videos.
+                String uploads = (path.endsWith("/shorts") ? TvPageRules.CHANNEL_SHORTS : "UU") + channel.substring(2);
+                return Optional.of(youtubePage(null, uploads));
+            }
             video = path.equals("/watch") ? query(uri, "v") : afterPrefix(path, "/shorts/", "/live/", "/embed/");
             isShort = path.startsWith("/shorts/");
         } else {

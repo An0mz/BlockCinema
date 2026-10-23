@@ -152,7 +152,17 @@ public final class TvPageRules {
 
     /** Whether a YouTube page plays a Short (it came from a shorts link): fullscreen starts in the vertical view. */
     public static boolean youtubeShort(String page) {
-        return "1".equals(youtubeParam(page, "shorts"));
+        String list = youtubeList(page);
+        return "1".equals(youtubeParam(page, "shorts")) || list != null && list.startsWith(CHANNEL_SHORTS);
+    }
+
+    /** A channel's Shorts as a playlist: this, then the channel ID without its "UC". */
+    public static final String CHANNEL_SHORTS = "UUSH";
+
+    /** Where a YouTube playlist page starts (from 0). */
+    public static int youtubeListIndex(String page) {
+        String index = youtubeParam(page, "index");
+        return index != null && LIST_INDEX.matcher(index).matches() ? Integer.parseInt(index) : 0;
     }
 
     /** The playlist a YouTube page plays, or null if it plays a single video. */

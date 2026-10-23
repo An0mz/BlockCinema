@@ -121,5 +121,6 @@
   "screen.blockcinema.wide_view": "Wide view",
   "screen.blockcinema.exit_fullscreen": "Exit fullscreen (Esc)",
   "screen.blockcinema.watch_here": "Watch in the world (scroll for the next video)",
-  "screen.blockcinema.watch_help": "Scroll: next / previous video   Click or Space: play/pause   Esc: leave"
+  "screen.blockcinema.watch_help": "Scroll: next / previous video   Click or Space: play/pause   Esc: leave",
+  "screen.blockcinema.nothing_next": "Nothing next: queue more videos"
 }

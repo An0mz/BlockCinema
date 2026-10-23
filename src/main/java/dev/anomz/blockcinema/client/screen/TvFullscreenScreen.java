@@ -88,9 +88,9 @@ public final class TvFullscreenScreen extends Screen {
         addRenderableWidget(new IconButton(mid + 12 + 6, rowY + 2, 20, Icon.FORWARD,
                 Component.translatable(key("skip_forward"), SKIP_SECONDS), IconButton.Style.GHOST, () -> TvRemote.skip(screen, SKIP_SECONDS)));
         addRenderableWidget(new IconButton(mid - 12 - 6 - 20 - 4 - 20, rowY + 2, 20, Icon.PREVIOUS,
-                Component.translatable(key("previous_video")), IconButton.Style.GHOST, () -> TvRemote.skipVideo(screen, -1)));
+                Component.translatable(key("previous_video")), IconButton.Style.GHOST, () -> skipVideo(-1)));
         addRenderableWidget(new IconButton(mid + 12 + 6 + 20 + 4, rowY + 2, 20, Icon.NEXT,
-                Component.translatable(key("next_video")), IconButton.Style.GHOST, () -> TvRemote.skipVideo(screen, 1)));
+                Component.translatable(key("next_video")), IconButton.Style.GHOST, () -> skipVideo(1)));
         addRenderableWidget(muteButton(8, rowY + 2));
         volume = addRenderableWidget(new VolumeSlider(30, rowY + 6, 60, screen));
         addRenderableWidget(new IconButton(width - 8 - 20 - 4 - 20, rowY + 2, 20, Icon.PHONE,
@@ -107,9 +107,9 @@ public final class TvFullscreenScreen extends Screen {
         timeBar = addRenderableWidget(new TimeBar(picX, picY + picH + 4, picW, screen));
         int sideX = picX + picW + 12;
         addRenderableWidget(new IconButton(sideX, picY, 24, Icon.UP,
-                Component.translatable(key("previous_video")), IconButton.Style.GHOST, () -> TvRemote.skipVideo(screen, -1)));
+                Component.translatable(key("previous_video")), IconButton.Style.GHOST, () -> skipVideo(-1)));
         addRenderableWidget(new IconButton(sideX, picY + 28, 24, Icon.DOWN,
-                Component.translatable(key("next_video")), IconButton.Style.GHOST, () -> TvRemote.skipVideo(screen, 1)));
+                Component.translatable(key("next_video")), IconButton.Style.GHOST, () -> skipVideo(1)));
         int bottom = picY + picH;
         addRenderableWidget(new IconButton(sideX, bottom - 92, 24, () -> paused() ? Icon.PLAY : Icon.PAUSE,
                 Component.translatable(key("play_pause")), IconButton.Style.PRIMARY, () -> TvRemote.togglePause(screen)));
@@ -132,6 +132,13 @@ public final class TvFullscreenScreen extends Screen {
     private boolean paused() {
         TvSource source = TvRemote.source(screen);
         return source != null && source.paused();
+    }
+
+    private void skipVideo(int direction) {
+        Component problem = TvRemote.skipVideo(screen, direction);
+        if (problem != null) {
+            timeBar.notice(problem);
+        }
     }
 
     private void toggleView() {
@@ -198,7 +205,7 @@ public final class TvFullscreenScreen extends Screen {
         if (vertical) {
             // Shorts-style: down for the next video, up for the previous one.
             if (scrollGate.allow()) {
-                TvRemote.skipVideo(screen, scrollY < 0 ? 1 : -1);
+                skipVideo(scrollY < 0 ? 1 : -1);
             }
         } else {
             setVolume(TvPlayers.volume(screen) + (scrollY > 0 ? WHEEL_VOLUME_STEP : -WHEEL_VOLUME_STEP));
@@ -226,14 +233,14 @@ public final class TvFullscreenScreen extends Screen {
             case GLFW.GLFW_KEY_RIGHT -> TvRemote.skip(screen, SKIP_SECONDS);
             case GLFW.GLFW_KEY_UP -> {
                 if (vertical) {
-                    TvRemote.skipVideo(screen, -1);
+                    skipVideo(-1);
                 } else {
                     setVolume(TvPlayers.volume(screen) + VOLUME_STEP);
                 }
             }
             case GLFW.GLFW_KEY_DOWN -> {
                 if (vertical) {
-                    TvRemote.skipVideo(screen, 1);
+                    skipVideo(1);
                 } else {
                     setVolume(TvPlayers.volume(screen) - VOLUME_STEP);
                 }

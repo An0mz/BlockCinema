@@ -27,6 +27,9 @@ public final class TvWatchScreen extends Screen {
     /** Whether this screen hid the HUD (so it shows it again when left). */
     private boolean hidGui;
     private long openedMillis;
+    /** Why the last skip did nothing, shown in place of the help for a moment. */
+    private Component notice = Component.empty();
+    private long noticeMillis;
 
     public TvWatchScreen(BlockPos screen) {
         super(Component.translatable(key("watch_here")));
@@ -58,12 +61,22 @@ public final class TvWatchScreen extends Screen {
         }
     }
 
+    private void skipVideo(int direction) {
+        Component problem = TvRemote.skipVideo(screen, direction);
+        if (problem != null) {
+            notice = problem;
+            noticeMillis = Util.getMillis();
+        }
+    }
+
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        long left = HELP_MILLIS - (Util.getMillis() - openedMillis);
+        boolean noticeShows = noticeMillis > openedMillis;
+        Component text = noticeShows ? notice : Component.translatable(key("watch_help"));
+        long left = HELP_MILLIS - (Util.getMillis() - (noticeShows ? noticeMillis : openedMillis));
         int alpha = (int) (255 * Math.min(1, left / (float) HELP_FADE_MILLIS));
         if (alpha > 8) {
-            graphics.drawCenteredString(font, Component.translatable(key("watch_help")), width / 2, height - 14, alpha << 24 | 0xFFFFFF);
+            graphics.drawCenteredString(font, text, width / 2, height - 14, alpha << 24 | 0xFFFFFF);
         }
     }
 
@@ -83,7 +96,7 @@ public final class TvWatchScreen extends Screen {
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
         if (scrollY != 0 && scrollGate.allow()) {
-            TvRemote.skipVideo(screen, scrollY < 0 ? 1 : -1);
+            skipVideo(scrollY < 0 ? 1 : -1);
         }
         return true;
     }
@@ -100,8 +113,8 @@ public final class TvWatchScreen extends Screen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         switch (keyCode) {
             case GLFW.GLFW_KEY_SPACE -> TvRemote.togglePause(screen);
-            case GLFW.GLFW_KEY_UP -> TvRemote.skipVideo(screen, -1);
-            case GLFW.GLFW_KEY_DOWN -> TvRemote.skipVideo(screen, 1);
+            case GLFW.GLFW_KEY_UP -> skipVideo(-1);
+            case GLFW.GLFW_KEY_DOWN -> skipVideo(1);
             default -> {
                 return super.keyPressed(keyCode, scanCode, modifiers);
             }

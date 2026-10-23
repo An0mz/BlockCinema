@@ -11,10 +11,14 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-/** Client to server: skip to the next queued video, or take entry {@code index} out of the queue. */
+/**
+ * Client to server: skip to the next queued video, go back to the one before (or start over), or take
+ * entry {@code index} out of the queue.
+ */
 public record QueueTvPayload(BlockPos origin, int action, int index) implements CustomPacketPayload {
     public static final int NEXT = 0;
     public static final int REMOVE = 1;
+    public static final int PREVIOUS = 2;
 
     public static final Type<QueueTvPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(BlockCinema.MODID, "queue_tv"));
@@ -48,6 +52,7 @@ public record QueueTvPayload(BlockPos origin, int action, int index) implements 
         switch (payload.action()) {
             case NEXT -> tv.playNext(player.level().getGameTime());
             case REMOVE -> tv.removeQueued(payload.index());
+            case PREVIOUS -> tv.playPrevious(player.level().getGameTime());
             default -> {
             }
         }

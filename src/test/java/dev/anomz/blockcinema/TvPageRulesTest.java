@@ -27,6 +27,8 @@ class TvPageRulesTest {
         assertEquals("https://blockcinema.anomz.dev/youtube.html?list=PL1234567890&index=2", atThird);
         assertTrue(TvPageRules.valid(TvService.YOUTUBE, atThird));
         assertEquals("PL1234567890", TvPageRules.youtubeList(atThird));
+        assertEquals(2, TvPageRules.youtubeListIndex(atThird));
+        assertTrue(TvPageRules.youtubeShort("https://blockcinema.anomz.dev/youtube.html?list=UUSHuAXFkgsw1L7xaCfnd5JJOw"));
         assertNull(TvPageRules.youtubeList("https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ"));
         String aShort = "https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ&shorts=1";
         assertTrue(TvPageRules.valid(TvService.YOUTUBE, aShort));

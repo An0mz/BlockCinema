@@ -1,8 +1,12 @@
 package dev.anomz.blockcinema.client;
 
+import java.util.List;
+
 import org.jetbrains.annotations.Nullable;
 
+import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.TvPageRules;
+import dev.anomz.blockcinema.TvQueueEntry;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.block.TvBlockEntity;
@@ -14,6 +18,7 @@ import dev.anomz.blockcinema.network.RotateTvPayload;
 import dev.anomz.blockcinema.network.VideoEndedPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.neoforged.neoforge.network.PacketDistributor;
 
 /**
@@ -89,23 +94,40 @@ public final class TvRemote {
 
     /**
      * Shorts-style scrolling: the next ({@code direction} 1) or previous (-1) video. In a YouTube playlist
-     * that moves through the playlist; otherwise next skips to the queued video and previous starts over.
+     * that moves through the playlist; otherwise next plays the queued video and previous goes back to what
+     * played before (or starts over).
+     *
+     * @return why nothing happens (nothing is queued next), to show the player; null otherwise
      */
-    public static void skipVideo(BlockPos origin, int direction) {
+    @Nullable
+    public static Component skipVideo(BlockPos origin, int direction) {
         TvSource source = source(origin);
         if (source == null) {
-            return;
+            return null;
         }
         String list = source.service() == TvService.YOUTUBE ? TvPageRules.youtubeList(source.page()) : null;
         if (list != null) {
-            int at = Math.max(0, TvPlayers.listIndex(origin));
+            // Until the page says where the playlist is, it is where the page started.
+            int at = TvPlayers.listIndex(origin);
+            if (at < 0) {
+                at = TvPageRules.youtubeListIndex(source.page());
+            }
             PacketDistributor.sendToServer(ChangeTvPayload.of(origin, TvService.YOUTUBE,
                     TvPageRules.youtubeListPage(list, Math.max(0, at + direction)), 0));
-        } else if (direction > 0) {
-            next(origin);
+        } else if (direction < 0) {
+            PacketDistributor.sendToServer(new QueueTvPayload(origin, QueueTvPayload.PREVIOUS, 0));
+        } else if (queue(origin).isEmpty()) {
+            return Component.translatable("screen." + BlockCinema.MODID + ".nothing_next");
         } else {
-            seek(origin, 0);
+            next(origin);
         }
+        return null;
+    }
+
+    /** The screen's queue, as the server last said (empty when unknown). */
+    public static List<TvQueueEntry> queue(BlockPos origin) {
+        Minecraft minecraft = Minecraft.getInstance();
+        return minecraft.level != null && minecraft.level.getBlockEntity(origin) instanceof TvBlockEntity tv ? tv.queue() : List.of();
     }
 
     /** Turns a floor or ceiling screen's picture a quarter turn (see {@link RotateTvPayload}). */

@@ -1,7 +1,9 @@
 package dev.anomz.blockcinema.block;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -46,6 +48,8 @@ public class TvBlockEntity extends BlockEntity {
     private TvSource source;
     /** What plays after the current video, in order (origin only). */
     private final List<TvQueueEntry> queue = new ArrayList<>();
+    /** What played before, latest first, for "previous" (origin only, server side; not saved). */
+    private final Deque<TvQueueEntry> history = new ArrayDeque<>();
     /** Whether a TV of the screen had a redstone signal at the last check (origin only, server side). */
     private boolean powered;
     /** Whether the signal paused what plays, so it resumes when the signal stops (a manual pause doesn't). */
@@ -96,9 +100,39 @@ public class TvBlockEntity extends BlockEntity {
         if (queue.isEmpty()) {
             return false;
         }
+        if (source != null) {
+            history.push(entry(source));
+            if (history.size() > MAX_QUEUE) {
+                history.removeLast();
+            }
+        }
         source = queue.remove(0).start(gameTime);
         sync();
         return true;
+    }
+
+    /**
+     * Server side: plays what played before the current video, which goes back to the front of the queue.
+     * With nothing before it, starts the current video over.
+     */
+    public void playPrevious(long gameTime) {
+        if (source == null) {
+            return;
+        }
+        if (history.isEmpty()) {
+            source = new TvSource(source.service(), source.page(), source.owner(), source.ownerName(), gameTime, 0, source.paused());
+        } else {
+            if (queue.size() >= MAX_QUEUE) {
+                queue.remove(queue.size() - 1);
+            }
+            queue.add(0, entry(source));
+            source = history.pop().start(gameTime);
+        }
+        sync();
+    }
+
+    private static TvQueueEntry entry(TvSource source) {
+        return new TvQueueEntry(source.service(), source.page(), "", source.owner(), source.ownerName());
     }
 
     /** Server side: takes one entry out of the queue. */
@@ -113,6 +147,7 @@ public class TvBlockEntity extends BlockEntity {
     public void turnOff() {
         source = null;
         queue.clear();
+        history.clear();
         sync();
     }
 
@@ -121,6 +156,8 @@ public class TvBlockEntity extends BlockEntity {
         target.source = source;
         target.queue.clear();
         target.queue.addAll(queue);
+        target.history.clear();
+        target.history.addAll(history);
         target.sync();
         turnOff();
     }
