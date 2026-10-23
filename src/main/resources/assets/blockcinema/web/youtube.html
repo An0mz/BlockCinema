@@ -22,7 +22,8 @@
   var start = Math.floor(Number(new URLSearchParams(location.hash.slice(1)).get('start')) || 0);
   var player;
   var ready = false;
-  var volume = 1;
+  // Silent until the mod says how loud (it knows how far away the player is).
+  var volume = 0;
   var visible = true;
   var pausedOutOfSight = false;
 

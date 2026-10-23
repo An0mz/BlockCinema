@@ -16,7 +16,8 @@
   var channel = new URLSearchParams(location.search).get('channel') || '';
   var player;
   var ready = false;
-  var volume = 1;
+  // Silent until the mod says how loud (it knows how far away the player is).
+  var volume = 0;
 
   // Called by the mod a few times a second: volume 0 to 1 from the player's distance, set with the
   // player's own volume control. Live streams keep playing out of sight, so "visible" isn't used here.

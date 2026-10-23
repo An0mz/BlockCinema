@@ -113,6 +113,8 @@ public final class TvPlayers {
         int listIndex = -1;
         /** The browser is portrait (9:16), on a screen taller than wide or in the vertical fullscreen view. */
         boolean portrait;
+        /** The page has reported, so it's up and hears what the mod sends it. */
+        boolean pageHeard;
         /** Fullscreen shows the vertical (Shorts) view. */
         boolean verticalView;
         /** Whether this player already told the server the video ended (once per video). */
@@ -487,6 +489,7 @@ public final class TvPlayers {
         playing.error = null;
         playing.endedSent = false;
         playing.listIndex = -1;
+        playing.pageHeard = false;
         playing.volume = -1;
         playing.lastSeenMillis = Util.getMillis();
         playing.lastSeekSyncMillis = Util.getMillis();
@@ -512,6 +515,11 @@ public final class TvPlayers {
     }
 
     private static void updateVolume(Playing playing, TvLayout layout, Player player, long now) {
+        if (!playing.pageHeard && playing.position != null) {
+            // The page is up now: what was sent while it loaded was lost (it starts silent meanwhile).
+            playing.pageHeard = true;
+            playing.volume = -1;
+        }
         Options options = Minecraft.getInstance().options;
         float gain = options.getSoundSourceVolume(SoundSource.MASTER) * options.getSoundSourceVolume(SoundSource.RECORDS);
         playing.worldGain = gain * (playing.fullscreen ? 1 : TvVolume.falloff(distance(layout, player.getEyePosition())));

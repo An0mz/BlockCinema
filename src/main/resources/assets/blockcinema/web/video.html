@@ -23,7 +23,9 @@
   var auth = fragment.get('auth');
   // Where to start, in seconds (resuming).
   var start = Number(fragment.get('start')) || 0;
-  var volume = 1;
+  // Silent until the mod says how loud (it knows how far away the player is).
+  var volume = 0;
+  video.volume = 0;
 
   function show(text) {
     var message = document.getElementById('message');
