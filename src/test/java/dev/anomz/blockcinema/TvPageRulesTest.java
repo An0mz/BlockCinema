@@ -13,30 +13,30 @@ import org.junit.jupiter.api.Test;
 class TvPageRulesTest {
     @Test
     void youtubePages() {
-        assertTrue(TvPageRules.valid(TvService.YOUTUBE, "https://dev.anomz.blockcinema/youtube.html?v=dQw4w9WgXcQ"));
-        assertTrue(TvPageRules.valid(TvService.YOUTUBE, "https://dev.anomz.blockcinema/youtube.html?v=dQw4w9WgXcQ&list=PL1234567890"));
-        assertTrue(TvPageRules.valid(TvService.YOUTUBE, "https://dev.anomz.blockcinema/youtube.html?list=PL1234567890"));
-        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://dev.anomz.blockcinema/youtube.html"));
-        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://dev.anomz.blockcinema/youtube.html?v=dQw4w9WgXcQ&x=1"));
-        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://dev.anomz.blockcinema/youtube.html?v=%3Cscript%3E123"));
+        assertTrue(TvPageRules.valid(TvService.YOUTUBE, "https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ"));
+        assertTrue(TvPageRules.valid(TvService.YOUTUBE, "https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ&list=PL1234567890"));
+        assertTrue(TvPageRules.valid(TvService.YOUTUBE, "https://blockcinema.anomz.dev/youtube.html?list=PL1234567890"));
+        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://blockcinema.anomz.dev/youtube.html"));
+        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ&x=1"));
+        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://blockcinema.anomz.dev/youtube.html?v=%3Cscript%3E123"));
         assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://evil.com/youtube.html?v=dQw4w9WgXcQ"));
-        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "http://dev.anomz.blockcinema/youtube.html?v=dQw4w9WgXcQ"));
-        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://dev.anomz.blockcinema/youtube.html?v=dQw4w9WgXcQ#auth=x"));
-        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://dev.anomz.blockcinema/twitch.html?channel=abc"));
+        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "http://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ"));
+        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ#auth=x"));
+        assertFalse(TvPageRules.valid(TvService.YOUTUBE, "https://blockcinema.anomz.dev/twitch.html?channel=abc"));
     }
 
     @Test
     void twitchAndLinkPages() {
-        assertTrue(TvPageRules.valid(TvService.TWITCH, "https://dev.anomz.blockcinema/twitch.html?channel=some_channel"));
-        assertFalse(TvPageRules.valid(TvService.TWITCH, "https://dev.anomz.blockcinema/twitch.html?channel=Bad%20Name"));
-        String link = "https://dev.anomz.blockcinema/video.html?src=https%3A%2F%2Fcdn.example.com%2Fa.mp4";
+        assertTrue(TvPageRules.valid(TvService.TWITCH, "https://blockcinema.anomz.dev/twitch.html?channel=some_channel"));
+        assertFalse(TvPageRules.valid(TvService.TWITCH, "https://blockcinema.anomz.dev/twitch.html?channel=Bad%20Name"));
+        String link = "https://blockcinema.anomz.dev/video.html?src=https%3A%2F%2Fcdn.example.com%2Fa.mp4";
         assertTrue(TvPageRules.valid(TvService.DIRECT_LINK, link));
         assertEquals("cdn.example.com", TvPageRules.linkHost(link));
-        assertTrue(TvPageRules.valid(TvService.DIRECT_LINK, "http://dev.anomz.blockcinema/video.html?src=http%3A%2F%2F10.0.0.2%2Fa.m3u8"));
+        assertTrue(TvPageRules.valid(TvService.DIRECT_LINK, "http://blockcinema.anomz.dev/video.html?src=http%3A%2F%2F10.0.0.2%2Fa.m3u8"));
         // The page's scheme must match the video's.
-        assertFalse(TvPageRules.valid(TvService.DIRECT_LINK, "https://dev.anomz.blockcinema/video.html?src=http%3A%2F%2F10.0.0.2%2Fa.m3u8"));
-        assertFalse(TvPageRules.valid(TvService.DIRECT_LINK, "https://dev.anomz.blockcinema/video.html?src=file%3A%2F%2F%2Fc%3A%2Fa.mp4"));
-        assertNull(TvPageRules.linkHost("https://dev.anomz.blockcinema/video.html"));
+        assertFalse(TvPageRules.valid(TvService.DIRECT_LINK, "https://blockcinema.anomz.dev/video.html?src=http%3A%2F%2F10.0.0.2%2Fa.m3u8"));
+        assertFalse(TvPageRules.valid(TvService.DIRECT_LINK, "https://blockcinema.anomz.dev/video.html?src=file%3A%2F%2F%2Fc%3A%2Fa.mp4"));
+        assertNull(TvPageRules.linkHost("https://blockcinema.anomz.dev/video.html"));
         assertFalse(TvPageRules.valid(TvService.JELLYFIN, link));
     }
 

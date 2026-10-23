@@ -20,8 +20,8 @@ class StateReportsTest {
 
     @Test
     void onlyOurPagesCount() {
-        assertTrue(StateReports.fromOurPage("https://dev.anomz.blockcinema/youtube.html?v=dQw4w9WgXcQ"));
-        assertTrue(StateReports.fromOurPage("http://dev.anomz.blockcinema/video.html?src=x"));
+        assertTrue(StateReports.fromOurPage("https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ"));
+        assertTrue(StateReports.fromOurPage("http://blockcinema.anomz.dev/video.html?src=x"));
         assertFalse(StateReports.fromOurPage("https://www.youtube.com/s/player/base.js"));
         assertFalse(StateReports.fromOurPage(""));
     }

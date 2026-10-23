@@ -18,8 +18,11 @@ import org.jetbrains.annotations.Nullable;
  * them. No Minecraft or browser classes here, so the dedicated server can use it.
  */
 public final class TvPageRules {
-    /** Our pages' host: the mod's app ID in reverse-DNS form, not a real domain. */
-    public static final String HOST = "dev.anomz.blockcinema";
+    /**
+     * Our pages' host: a name under the author's own domain (anomz.dev), which identifies the mod to
+     * YouTube and is the "parent" Twitch's embed checks. The pages are served from the jar, never fetched.
+     */
+    public static final String HOST = "blockcinema.anomz.dev";
     public static final int MAX_PAGE_LENGTH = 4096;
     public static final int MAX_LINK_LENGTH = 2048;
 

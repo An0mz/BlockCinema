@@ -19,10 +19,10 @@ import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.TvPageRules;
 
 /**
- * Our own player pages, served from the mod jar under {@link #HOST}. The host is the mod's app ID in
- * reverse-DNS form, as YouTube asks apps to identify themselves with; it is not a real domain, so no
- * request for it ever leaves the computer. Served over https, and also over http so the video page
- * can play from a home server without https (Chromium blocks http video on an https page).
+ * Our own player pages, served from the mod jar under {@link #HOST}, a name under the author's own
+ * domain that identifies the mod to YouTube and Twitch. The browser answers requests for it from the
+ * jar, so none ever leaves the computer. Served over https, and also over http so the video page can
+ * play from a home server without https (Chromium blocks http video on an https page).
  */
 public final class TvPages implements CefSchemeHandlerFactory {
     public static final String HOST = TvPageRules.HOST;
