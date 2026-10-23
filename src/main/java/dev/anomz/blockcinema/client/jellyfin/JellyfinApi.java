@@ -49,6 +49,13 @@ public final class JellyfinApi {
     /** Jellyfin counts time in ticks of 100 ns. */
     private static final double TICKS_PER_SECOND = 10_000_000;
 
+    /** An audio or subtitle track of a video: its Jellyfin stream index and a name to show. */
+    public record Track(int index, String name, boolean isDefault) {
+    }
+
+    public record Tracks(List<Track> audio, List<Track> subtitles) {
+    }
+
     /** {@code url} is the stream for the TV page; the rest is for reporting playback to Jellyfin. */
     public record Playback(String url, String itemId, String mediaSourceId, String playSessionId) {
     }
@@ -166,7 +173,42 @@ public final class JellyfinApi {
      * Asks the server for an HLS stream of the item with H.264 video and AAC audio, which the TV's
      * browser can play: Jellyfin copies streams that already fit and transcodes the rest.
      */
+    /** The audio and subtitle tracks of a video. */
+    public CompletableFuture<Tracks> tracks(String userId, String itemId) {
+        return get("/Items/" + encode(itemId) + "?userId=" + encode(userId)).thenApply(json -> {
+            List<Track> audio = new ArrayList<>();
+            List<Track> subtitles = new ArrayList<>();
+            JsonArray streams = json.getAsJsonObject().getAsJsonArray("MediaStreams");
+            if (streams != null) {
+                for (JsonElement element : streams) {
+                    JsonObject stream = element.getAsJsonObject();
+                    String type = string(stream, "Type");
+                    int index = stream.get("Index").getAsInt();
+                    String name = string(stream, "DisplayTitle");
+                    if (name.isEmpty()) {
+                        name = string(stream, "Language").isEmpty() ? "#" + index : string(stream, "Language");
+                    }
+                    boolean isDefault = stream.has("IsDefault") && stream.get("IsDefault").getAsBoolean();
+                    if ("Audio".equals(type)) {
+                        audio.add(new Track(index, name, isDefault));
+                    } else if ("Subtitle".equals(type)) {
+                        subtitles.add(new Track(index, name, isDefault));
+                    }
+                }
+            }
+            return new Tracks(audio, subtitles);
+        });
+    }
+
     public CompletableFuture<Playback> playback(String userId, String itemId) {
+        return playback(userId, itemId, -1, -1);
+    }
+
+    /**
+     * Like {@link #playback(String, String)}, with audio track {@code audio} (-1: the default) and subtitle
+     * track {@code subtitle} burned into the picture (-1: none).
+     */
+    public CompletableFuture<Playback> playback(String userId, String itemId, int audio, int subtitle) {
         JsonObject profile = new JsonObject();
         profile.addProperty("Name", CLIENT);
         profile.addProperty("MaxStreamingBitrate", 20_000_000);
@@ -183,6 +225,15 @@ public final class JellyfinApi {
         JsonArray transcoding = new JsonArray();
         transcoding.add(hls);
         profile.add("TranscodingProfiles", transcoding);
+        // Subtitles are burned into the picture: it works for every subtitle format with our HLS stream.
+        JsonArray subtitleProfiles = new JsonArray();
+        for (String format : new String[] { "srt", "subrip", "ass", "ssa", "vtt", "webvtt", "pgs", "pgssub", "dvdsub", "dvbsub" }) {
+            JsonObject subtitleProfile = new JsonObject();
+            subtitleProfile.addProperty("Format", format);
+            subtitleProfile.addProperty("Method", "Encode");
+            subtitleProfiles.add(subtitleProfile);
+        }
+        profile.add("SubtitleProfiles", subtitleProfiles);
 
         JsonObject body = new JsonObject();
         body.addProperty("UserId", userId);
@@ -193,6 +244,11 @@ public final class JellyfinApi {
         body.addProperty("AllowVideoStreamCopy", true);
         body.addProperty("AllowAudioStreamCopy", true);
         body.add("DeviceProfile", profile);
+        if (audio >= 0) {
+            body.addProperty("AudioStreamIndex", audio);
+        }
+        body.addProperty("SubtitleStreamIndex", subtitle >= 0 ? subtitle : -1);
+        body.addProperty("AlwaysBurnInSubtitleWhenTranscoding", subtitle >= 0);
         return post("/Items/" + encode(itemId) + "/PlaybackInfo", body).thenApply(json -> {
             JsonObject result = json.getAsJsonObject();
             JsonArray sources = result.getAsJsonArray("MediaSources");

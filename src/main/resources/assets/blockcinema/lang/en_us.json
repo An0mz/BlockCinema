@@ -112,5 +112,8 @@
   "screen.blockcinema.up_next": "Up next",
   "screen.blockcinema.skip_to_next": "Skip to next",
   "screen.blockcinema.remove_from_queue": "Remove from queue",
-  "screen.blockcinema.more_queued": "and %s more"
+  "screen.blockcinema.more_queued": "and %s more",
+  "screen.blockcinema.jellyfin.audio": "Audio: %s",
+  "screen.blockcinema.jellyfin.subtitles": "Subtitles: %s",
+  "screen.blockcinema.jellyfin.subtitles_off": "Off"
 }

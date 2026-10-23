@@ -32,6 +32,8 @@ public final class TvPageRules {
     /** Jellyfin's server and item IDs: 32 hex digits. */
     private static final Pattern JELLYFIN_ID = Pattern.compile("[0-9a-f]{32}");
     private static final String JELLYFIN_PREFIX = "jellyfin:";
+    /** A Jellyfin stream index, or -1 (audio: the default track; subtitles: none). */
+    private static final Pattern JELLYFIN_TRACK = Pattern.compile("-1|\\d{1,3}");
 
     private TvPageRules() {
     }
@@ -73,17 +75,35 @@ public final class TvPageRules {
 
     /** What a Jellyfin TV shares: the server's ID and the video's ID, never a login or an address. */
     public static String jellyfinPage(String serverId, String itemId) {
-        return JELLYFIN_PREFIX + serverId.toLowerCase(Locale.ROOT) + ":" + itemId.toLowerCase(Locale.ROOT);
+        return jellyfinPage(serverId, itemId, -1, -1);
     }
 
-    /** The server and item IDs in a {@link #jellyfinPage}, or null if it isn't one. */
+    /**
+     * Like {@link #jellyfinPage(String, String)}, with the audio and subtitle tracks everyone watching gets
+     * (Jellyfin stream indexes; -1 is the default audio and no subtitles).
+     */
+    public static String jellyfinPage(String serverId, String itemId, int audio, int subtitle) {
+        String page = JELLYFIN_PREFIX + serverId.toLowerCase(Locale.ROOT) + ":" + itemId.toLowerCase(Locale.ROOT);
+        return audio < 0 && subtitle < 0 ? page : page + ":" + Math.max(-1, audio) + ":" + Math.max(-1, subtitle);
+    }
+
+    /** The audio and subtitle tracks in a {@link #jellyfinPage} ({-1, -1} when it names none). */
+    public static int[] jellyfinTracks(String page) {
+        String[] parts = jellyfinIds(page);
+        return parts == null || parts.length < 4 ? new int[] { -1, -1 }
+                : new int[] { Integer.parseInt(parts[2]), Integer.parseInt(parts[3]) };
+    }
+
+    /** The server and item IDs (then any tracks) in a {@link #jellyfinPage}, or null if it isn't one. */
     @Nullable
     public static String[] jellyfinIds(String page) {
         if (!page.startsWith(JELLYFIN_PREFIX)) {
             return null;
         }
         String[] ids = page.substring(JELLYFIN_PREFIX.length()).split(":", -1);
-        return ids.length == 2 && JELLYFIN_ID.matcher(ids[0]).matches() && JELLYFIN_ID.matcher(ids[1]).matches() ? ids : null;
+        boolean tracks = ids.length == 4 && JELLYFIN_TRACK.matcher(ids[2]).matches() && JELLYFIN_TRACK.matcher(ids[3]).matches();
+        return (ids.length == 2 || tracks) && JELLYFIN_ID.matcher(ids[0]).matches() && JELLYFIN_ID.matcher(ids[1]).matches()
+                ? ids : null;
     }
 
     /** The host a video-link page plays from (lowercase), or null if it isn't a valid video-link page. */

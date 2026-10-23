@@ -41,6 +41,16 @@ public final class JellyfinBrowseScreen extends PanelScreen {
     private List<JellyfinApi.Item> items;
     private ItemList list;
     private TextButton open;
+    private static final JellyfinApi.Tracks NO_TRACKS = new JellyfinApi.Tracks(List.of(), List.of());
+    private TextButton audioButton;
+    private TextButton subtitleButton;
+    private JellyfinApi.Tracks tracks = NO_TRACKS;
+    /** The video the tracks are for, or null. */
+    @Nullable
+    private String tracksFor;
+    private int audioChoice;
+    /** -1: no subtitles. */
+    private int subtitleChoice = -1;
     @Nullable
     private TextButton queue;
     private Component status = Component.empty();
@@ -79,12 +89,17 @@ public final class JellyfinBrowseScreen extends PanelScreen {
         return panelY + panelH - Ui.PAD - 20;
     }
 
+    /** The row with the audio and subtitle choices, above the bottom bar. */
+    private int tracksY() {
+        return bottomBarY() - 24;
+    }
+
     @Override
     protected void initContent() {
         // Back from a folder opened from here.
         closed = false;
         int listTop = contentTop() - 4;
-        list = addRenderableWidget(new ItemList(minecraft, panelW - 2 * Ui.PAD, bottomBarY() - 8 - listTop, listTop));
+        list = addRenderableWidget(new ItemList(minecraft, panelW - 2 * Ui.PAD, tracksY() - 6 - listTop, listTop));
         list.setX(panelX + Ui.PAD);
         if (items != null) {
             items.forEach(item -> list.add(item));
@@ -94,6 +109,17 @@ public final class JellyfinBrowseScreen extends PanelScreen {
         open = addRenderableWidget(new TextButton(x + w - 90, bottomBarY(), 90, 20, Component.translatable(key("open")), true,
                 this::openSelected));
         open.active = false;
+        int half = (w - 6) / 2;
+        audioButton = addRenderableWidget(new TextButton(x, tracksY(), half, 20, Component.empty(), false, () -> {
+            audioChoice = (audioChoice + 1) % Math.max(1, tracks.audio().size());
+            showTracks();
+        }));
+        subtitleButton = addRenderableWidget(new TextButton(x + w - half, tracksY(), half, 20, Component.empty(), false, () -> {
+            // -1 is "off", then each subtitle track.
+            subtitleChoice = subtitleChoice + 1 >= tracks.subtitles().size() ? -1 : subtitleChoice + 1;
+            showTracks();
+        }));
+        showTracks();
         if (TvRemote.source(screen) != null) {
             // Something plays already: a video can wait its turn instead.
             queue = addRenderableWidget(new TextButton(x + w - 90 - 6 - 90, bottomBarY(), 90, 20,
@@ -150,7 +176,7 @@ public final class JellyfinBrowseScreen extends PanelScreen {
         // The server's ID is what the TV shares. Jellyfin keeps the watch position itself: start where it
         // says. Everybody logged in to this server, this player included, then streams it with their own login.
         withServerId(id -> {
-            TvRemote.playJellyfin(screen, id, item.id(), item.resumeSeconds());
+            TvRemote.playJellyfin(screen, id, item.id(), audioIndex(), subtitleIndex(), item.resumeSeconds());
             if (!closed) {
                 minecraft.setScreen(null);
             }
@@ -164,7 +190,8 @@ public final class JellyfinBrowseScreen extends PanelScreen {
         }
         JellyfinApi.Item item = entry.item;
         withServerId(id -> {
-            TvRemote.enqueue(screen, TvService.JELLYFIN, TvPageRules.jellyfinPage(id, item.id()), item.name());
+            TvRemote.enqueue(screen, TvService.JELLYFIN, TvPageRules.jellyfinPage(id, item.id(), audioIndex(), subtitleIndex()),
+                    item.name());
             if (!closed) {
                 minecraft.setScreen(null);
             }
@@ -190,6 +217,59 @@ public final class JellyfinBrowseScreen extends PanelScreen {
             }
             action.accept(id);
         }));
+    }
+
+    /** Loads the selected video's audio and subtitle tracks for the buttons; folders have none. */
+    private void loadTracks(@Nullable JellyfinApi.Item item) {
+        tracks = NO_TRACKS;
+        audioChoice = 0;
+        subtitleChoice = -1;
+        tracksFor = item == null || item.folder() ? null : item.id();
+        showTracks();
+        if (tracksFor == null) {
+            return;
+        }
+        String wanted = tracksFor;
+        api.tracks(login.userId(), wanted).whenComplete((loaded, error) -> minecraft.execute(() -> {
+            if (error != null || closed || !wanted.equals(tracksFor)) {
+                return;
+            }
+            tracks = loaded;
+            // The default audio track, and the default (often forced) subtitles if there are any.
+            for (int i = 0; i < loaded.audio().size(); i++) {
+                if (loaded.audio().get(i).isDefault()) {
+                    audioChoice = i;
+                }
+            }
+            for (int i = 0; i < loaded.subtitles().size(); i++) {
+                if (loaded.subtitles().get(i).isDefault()) {
+                    subtitleChoice = i;
+                }
+            }
+            showTracks();
+        }));
+    }
+
+    /** Shows the chosen tracks on the buttons; hidden while there is nothing to choose. */
+    private void showTracks() {
+        if (audioButton == null) {
+            return;
+        }
+        audioButton.visible = tracksFor != null && tracks.audio().size() > 1;
+        subtitleButton.visible = tracksFor != null && !tracks.subtitles().isEmpty();
+        if (!tracks.audio().isEmpty()) {
+            audioButton.setMessage(Component.translatable(key("audio"), tracks.audio().get(audioChoice).name()));
+        }
+        subtitleButton.setMessage(Component.translatable(key("subtitles"), subtitleChoice < 0
+                ? Component.translatable(key("subtitles_off")).getString() : tracks.subtitles().get(subtitleChoice).name()));
+    }
+
+    private int audioIndex() {
+        return tracksFor == null || tracks.audio().isEmpty() ? -1 : tracks.audio().get(audioChoice).index();
+    }
+
+    private int subtitleIndex() {
+        return tracksFor == null || subtitleChoice < 0 ? -1 : tracks.subtitles().get(subtitleChoice).index();
     }
 
     private void logOut() {
@@ -228,6 +308,7 @@ public final class JellyfinBrowseScreen extends PanelScreen {
                 return;
             }
             open.active = entry != null;
+            loadTracks(entry == null ? null : entry.item);
             if (queue != null) {
                 queue.active = entry != null && !entry.item.folder();
             }

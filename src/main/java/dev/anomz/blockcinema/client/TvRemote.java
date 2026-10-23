@@ -40,9 +40,9 @@ public final class TvRemote {
      * Plays a Jellyfin video. Only which video on which server is shared: everybody logged in to that
      * server streams it with their own login, this player included.
      */
-    public static void playJellyfin(BlockPos origin, String serverId, String itemId, double startSeconds) {
+    public static void playJellyfin(BlockPos origin, String serverId, String itemId, int audio, int subtitle, double startSeconds) {
         PacketDistributor.sendToServer(ChangeTvPayload.of(origin, TvService.JELLYFIN,
-                TvPageRules.jellyfinPage(serverId, itemId), startSeconds));
+                TvPageRules.jellyfinPage(serverId, itemId, audio, subtitle), startSeconds));
     }
 
     public static void togglePause(BlockPos origin) {

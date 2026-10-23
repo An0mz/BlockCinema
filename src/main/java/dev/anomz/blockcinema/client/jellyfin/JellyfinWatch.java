@@ -7,6 +7,7 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.Nullable;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.client.browser.VideoLinks;
 import net.minecraft.Util;
@@ -81,7 +82,8 @@ public final class JellyfinWatch {
         Request request = new Request();
         request.api = JellyfinApi.of(login, JellyfinApi.appVersion());
         REQUESTS.put(key, request);
-        request.api.playback(login.userId(), itemId).whenComplete((playback, error) -> Minecraft.getInstance().execute(() -> {
+        int[] tracks = TvPageRules.jellyfinTracks(key);
+        request.api.playback(login.userId(), itemId, tracks[0], tracks[1]).whenComplete((playback, error) -> Minecraft.getInstance().execute(() -> {
             if (REQUESTS.get(key) != request) {
                 return;
             }

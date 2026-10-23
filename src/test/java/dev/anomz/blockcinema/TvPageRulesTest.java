@@ -51,6 +51,13 @@ class TvPageRulesTest {
         assertFalse(TvPageRules.valid(TvService.YOUTUBE, page));
         assertFalse(TvPageRules.valid(TvService.JELLYFIN, "jellyfin:" + server));
         assertFalse(TvPageRules.valid(TvService.JELLYFIN, page + ":x"));
+        String withTracks = TvPageRules.jellyfinPage(server, item, 2, -1);
+        assertEquals(page + ":2:-1", withTracks);
+        assertTrue(TvPageRules.valid(TvService.JELLYFIN, withTracks));
+        assertEquals(2, TvPageRules.jellyfinTracks(withTracks)[0]);
+        assertEquals(-1, TvPageRules.jellyfinTracks(page)[1]);
+        assertFalse(TvPageRules.valid(TvService.JELLYFIN, page + ":2:-2"));
+        assertFalse(TvPageRules.valid(TvService.JELLYFIN, page + ":2:1000"));
         assertFalse(TvPageRules.valid(TvService.JELLYFIN, "jellyfin:http://192.168.1.5:8096:" + item));
         assertFalse(TvPageRules.valid(TvService.JELLYFIN, ""));
     }
