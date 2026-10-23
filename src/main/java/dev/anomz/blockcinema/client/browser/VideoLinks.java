@@ -2,6 +2,7 @@ package dev.anomz.blockcinema.client.browser;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URLDecoder;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Locale;
@@ -99,6 +100,35 @@ public final class VideoLinks {
         String page = TvPages.origin(scheme) + "/video.html?src=" + URLEncoder.encode(src, StandardCharsets.UTF_8);
         return authorization == null ? page
                 : page + "#auth=" + URLEncoder.encode(authorization, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * A short label for one of our pages, for the queue when it has no title: the YouTube video or
+     * playlist ID, the Twitch channel or the link's file name.
+     */
+    public static String label(String page) {
+        URI uri = parse(page);
+        if (uri == null || uri.getRawQuery() == null) {
+            return "";
+        }
+        for (String name : new String[] { "v", "list", "channel" }) {
+            String value = query(uri, name);
+            if (value != null) {
+                return value;
+            }
+        }
+        String src = query(uri, "src");
+        if (src == null) {
+            return "";
+        }
+        try {
+            String link = URLDecoder.decode(src, StandardCharsets.UTF_8);
+            String path = new URI(link).getPath();
+            String file = path == null ? "" : path.substring(path.lastIndexOf('/') + 1);
+            return file.isEmpty() ? link : file;
+        } catch (URISyntaxException | IllegalArgumentException e) {
+            return "";
+        }
     }
 
     private static String youtubePage(String video, String list) {

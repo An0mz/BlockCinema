@@ -40,6 +40,11 @@
     console.log('[blockcinema-error] ' + code);
   }
 
+  // The video ended, so the screen's queue can go on: "[blockcinema-ended]".
+  function reportEnded() {
+    console.log('[blockcinema-ended]');
+  }
+
   // Live streams can't be seeked.
   window.blockcinemaSeek = function (seconds) {
   };
@@ -67,6 +72,8 @@
     });
     player.addEventListener(Twitch.Player.OFFLINE, function () {
       reportError('offline');
+      // A stream that went offline is over: the queue goes on.
+      reportEnded();
     });
     player.addEventListener(Twitch.Player.PLAYING, function () {
       reportError('none');

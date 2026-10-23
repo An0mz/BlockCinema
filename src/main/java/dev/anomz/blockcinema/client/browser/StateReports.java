@@ -17,6 +17,7 @@ import net.minecraft.client.Minecraft;
 final class StateReports extends CefDisplayHandlerAdapter {
     static final String PREFIX = "[blockcinema-state] ";
     static final String ERROR_PREFIX = "[blockcinema-error] ";
+    static final String ENDED = "[blockcinema-ended]";
     private static final Pattern ERROR_CODE = Pattern.compile("[a-z_]{1,20}");
 
     /** The error code in an error line ("none" when playing again), or null if it isn't one. */
@@ -63,6 +64,10 @@ final class StateReports extends CefDisplayHandlerAdapter {
             int line) {
         if (!fromOurPage(source)) {
             return false;
+        }
+        if (ENDED.equals(message)) {
+            Minecraft.getInstance().execute(() -> TvPlayers.reportEnded(browser));
+            return true;
         }
         String error = parseError(message);
         if (error != null) {

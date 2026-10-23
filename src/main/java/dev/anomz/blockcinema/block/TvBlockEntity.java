@@ -1,6 +1,8 @@
 package dev.anomz.blockcinema.block;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.WeakHashMap;
@@ -9,11 +11,14 @@ import org.jetbrains.annotations.Nullable;
 
 import dev.anomz.blockcinema.BlockCinemaRegistries;
 import dev.anomz.blockcinema.TvPageRules;
+import dev.anomz.blockcinema.TvQueueEntry;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.Tag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -27,6 +32,8 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 public class TvBlockEntity extends BlockEntity {
     private static final long LAYOUT_CHECK_INTERVAL = 10;
+    /** Most videos waiting in a screen's queue. */
+    public static final int MAX_QUEUE = 32;
     /**
      * TVs with something to play on this client, for the client's players to follow (client thread only).
      * Weak, so unloaded TVs never linger.
@@ -37,6 +44,8 @@ public class TvBlockEntity extends BlockEntity {
     private long layoutCheckedAt = Long.MIN_VALUE;
     @Nullable
     private TvSource source;
+    /** What plays after the current video, in order (origin only). */
+    private final List<TvQueueEntry> queue = new ArrayList<>();
     /** Whether a TV of the screen had a redstone signal at the last check (origin only, server side). */
     private boolean powered;
     /** Whether the signal paused what plays, so it resumes when the signal stops (a manual pause doesn't). */
@@ -61,9 +70,62 @@ public class TvBlockEntity extends BlockEntity {
         return source;
     }
 
-    /** Server side: sets what the screen plays (null turns it off) and sends it to nearby clients. */
+    /** Server side: sets what the screen plays (null: nothing, the queue stays) and sends it to nearby clients. */
     public void setSource(@Nullable TvSource source) {
         this.source = source;
+        sync();
+    }
+
+    /** What plays after the current video (unmodifiable). */
+    public List<TvQueueEntry> queue() {
+        return Collections.unmodifiableList(queue);
+    }
+
+    /** Server side: adds to the end of the queue; false when it is full. */
+    public boolean enqueue(TvQueueEntry entry) {
+        if (queue.size() >= MAX_QUEUE) {
+            return false;
+        }
+        queue.add(entry);
+        sync();
+        return true;
+    }
+
+    /** Server side: plays the next queued video; false if the queue is empty (then nothing changes). */
+    public boolean playNext(long gameTime) {
+        if (queue.isEmpty()) {
+            return false;
+        }
+        source = queue.remove(0).start(gameTime);
+        sync();
+        return true;
+    }
+
+    /** Server side: takes one entry out of the queue. */
+    public void removeQueued(int index) {
+        if (index >= 0 && index < queue.size()) {
+            queue.remove(index);
+            sync();
+        }
+    }
+
+    /** Server side: turns the screen off and empties its queue. */
+    public void turnOff() {
+        source = null;
+        queue.clear();
+        sync();
+    }
+
+    /** Server side: the screen's origin moved to {@code target} (it was turned): what plays and the queue go along. */
+    public void moveScreenTo(TvBlockEntity target) {
+        target.source = source;
+        target.queue.clear();
+        target.queue.addAll(queue);
+        target.sync();
+        turnOff();
+    }
+
+    private void sync() {
         setChanged();
         if (level != null && !level.isClientSide) {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
@@ -124,12 +186,32 @@ public class TvBlockEntity extends BlockEntity {
             saved.putBoolean("paused", source.paused());
             tag.put("source", saved);
         }
+        if (!queue.isEmpty()) {
+            ListTag list = new ListTag();
+            for (TvQueueEntry entry : queue) {
+                CompoundTag saved = new CompoundTag();
+                saved.putString("service", entry.service().id());
+                saved.putString("page", entry.page());
+                saved.putString("title", entry.title());
+                saved.putUUID("owner", entry.owner());
+                saved.putString("ownerName", entry.ownerName());
+                list.add(saved);
+            }
+            tag.put("queue", list);
+        }
     }
 
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
         source = tag.contains("source") ? readSource(tag.getCompound("source")) : null;
+        queue.clear();
+        for (Tag element : tag.getList("queue", Tag.TAG_COMPOUND)) {
+            TvQueueEntry entry = readQueueEntry((CompoundTag) element);
+            if (entry != null && queue.size() < MAX_QUEUE) {
+                queue.add(entry);
+            }
+        }
         powered = tag.getBoolean("powered");
         pausedByRedstone = tag.getBoolean("pausedByRedstone");
         if (level != null && level.isClientSide) {
@@ -137,22 +219,32 @@ public class TvBlockEntity extends BlockEntity {
         }
     }
 
+    /** The service saved under "service" if its page is still valid for it, else null. */
+    @Nullable
+    private static TvService readService(CompoundTag saved) {
+        for (TvService candidate : TvService.values()) {
+            if (candidate.id().equals(saved.getString("service"))) {
+                return saved.hasUUID("owner") && TvPageRules.valid(candidate, saved.getString("page")) ? candidate : null;
+            }
+        }
+        return null;
+    }
+
+    @Nullable
+    private static TvQueueEntry readQueueEntry(CompoundTag saved) {
+        TvService service = readService(saved);
+        return service == null ? null : new TvQueueEntry(service, saved.getString("page"),
+                TvQueueEntry.cleanTitle(saved.getString("title")), saved.getUUID("owner"), saved.getString("ownerName"));
+    }
+
     /** Null if the saved source is damaged or no longer allowed in this form. */
     @Nullable
     private static TvSource readSource(CompoundTag saved) {
-        TvService service = null;
-        for (TvService candidate : TvService.values()) {
-            if (candidate.id().equals(saved.getString("service"))) {
-                service = candidate;
-            }
-        }
-        if (service == null || !saved.hasUUID("owner")) {
+        TvService service = readService(saved);
+        if (service == null) {
             return null;
         }
         String page = saved.getString("page");
-        if (!TvPageRules.valid(service, page)) {
-            return null;
-        }
         UUID owner = saved.getUUID("owner");
         return new TvSource(service, page, owner, saved.getString("ownerName"), saved.getLong("anchorTick"),
                 Math.max(0, saved.getDouble("anchorSeconds")), saved.getBoolean("paused"));

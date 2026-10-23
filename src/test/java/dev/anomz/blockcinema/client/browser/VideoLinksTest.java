@@ -61,6 +61,14 @@ class VideoLinksTest {
     }
 
     @Test
+    void queueLabels() {
+        assertEquals("dQw4w9WgXcQ", VideoLinks.label(VideoLinks.youtube("https://youtu.be/dQw4w9WgXcQ").orElseThrow()));
+        assertEquals("some_channel", VideoLinks.label(VideoLinks.twitch("some_channel").orElseThrow()));
+        assertEquals("movie night.mp4", VideoLinks.label(VideoLinks.direct("https://cdn.example.com/films/movie%20night.mp4").orElseThrow()));
+        assertEquals("", VideoLinks.label("jellyfin:0123456789abcdef0123456789abcdef:f27caa37e5142225cceded48f6553502"));
+    }
+
+    @Test
     void guardKeepsMainFrameOnOurPages() {
         assertTrue(NavigationGuard.allowed("https://blockcinema.anomz.dev/youtube.html?v=dQw4w9WgXcQ", true));
         assertTrue(!NavigationGuard.allowed("https://www.youtube.com/watch?v=dQw4w9WgXcQ", true));

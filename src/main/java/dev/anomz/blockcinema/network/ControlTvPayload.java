@@ -47,7 +47,7 @@ public record ControlTvPayload(BlockPos origin, int action, double seconds) impl
             case PAUSE -> tv.setSource(source.pausedAt(now));
             case RESUME -> tv.setSource(source.resumedAt(now));
             case SEEK -> tv.setSource(source.seekedTo(now, TvRequests.seconds(payload.seconds())));
-            case STOP -> tv.setSource(null);
+            case STOP -> tv.turnOff();
             default -> {
             }
         }

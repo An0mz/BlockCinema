@@ -64,6 +64,12 @@ class TvPageRulesTest {
     }
 
     @Test
+    void queueTitlesAreCleaned() {
+        assertEquals("Movie night", TvQueueEntry.cleanTitle("  Movie\u0001 night\n "));
+        assertEquals(TvQueueEntry.MAX_TITLE_LENGTH, TvQueueEntry.cleanTitle("x".repeat(500)).length());
+    }
+
+    @Test
     void positionFollowsGameTime() {
         TvSource source = new TvSource(TvService.YOUTUBE, "p", UUID.randomUUID(), "Dev", 100, 30, false);
         assertEquals(30, source.position(100));

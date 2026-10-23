@@ -9,7 +9,9 @@ import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.network.ChangeTvPayload;
 import dev.anomz.blockcinema.network.ControlTvPayload;
+import dev.anomz.blockcinema.network.QueueTvPayload;
 import dev.anomz.blockcinema.network.RotateTvPayload;
+import dev.anomz.blockcinema.network.VideoEndedPayload;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.neoforged.neoforge.network.PacketDistributor;
@@ -64,6 +66,25 @@ public final class TvRemote {
         } else if (source != null && minecraft.level != null) {
             seek(origin, source.position(minecraft.level.getGameTime()) + seconds);
         }
+    }
+
+    /** Adds one of our pages (or a Jellyfin page) to the screen's queue; it plays now if nothing does. */
+    public static void enqueue(BlockPos origin, TvService service, String page, String title) {
+        PacketDistributor.sendToServer(ChangeTvPayload.queued(origin, service, page, title));
+    }
+
+    /** Skips to the next queued video. */
+    public static void next(BlockPos origin) {
+        PacketDistributor.sendToServer(new QueueTvPayload(origin, QueueTvPayload.NEXT, 0));
+    }
+
+    public static void removeQueued(BlockPos origin, int index) {
+        PacketDistributor.sendToServer(new QueueTvPayload(origin, QueueTvPayload.REMOVE, index));
+    }
+
+    /** The video {@code page} ended here (sent by {@code TvPlayers}, once per video). */
+    public static void ended(BlockPos origin, String page) {
+        PacketDistributor.sendToServer(new VideoEndedPayload(origin, page));
     }
 
     /** Turns a floor or ceiling screen's picture a quarter turn (see {@link RotateTvPayload}). */

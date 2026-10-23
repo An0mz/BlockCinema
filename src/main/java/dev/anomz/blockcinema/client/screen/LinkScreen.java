@@ -8,6 +8,7 @@ import org.lwjgl.glfw.GLFW;
 import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.client.TvRemote;
+import dev.anomz.blockcinema.client.browser.VideoLinks;
 import dev.anomz.blockcinema.client.screen.ui.PanelScreen;
 import dev.anomz.blockcinema.client.screen.ui.TextButton;
 import dev.anomz.blockcinema.client.screen.ui.TextField;
@@ -64,7 +65,15 @@ public final class LinkScreen extends PanelScreen {
         setInitialFocus(link);
         int buttonY = y + 20 + 22;
         addRenderableWidget(new TextButton(x + w - 80, buttonY, 80, 20, Component.translatable(key("play")), true, this::play));
-        addRenderableWidget(new TextButton(x + w - 80 - 6 - 70, buttonY, 70, 20, CommonComponents.GUI_CANCEL, false, this::onClose));
+        int cancelX = x + w - 80 - 6 - 70;
+        if (TvRemote.source(screen) != null) {
+            // Something plays already: this can wait its turn instead (Cancel moves to the left).
+            int queueW = 90;
+            addRenderableWidget(new TextButton(x + w - 80 - 6 - queueW, buttonY, queueW, 20, Component.translatable(key("add_to_queue")),
+                    false, this::enqueue));
+            cancelX = x;
+        }
+        addRenderableWidget(new TextButton(cancelX, buttonY, 70, 20, CommonComponents.GUI_CANCEL, false, this::onClose));
     }
 
     private void play() {
@@ -74,6 +83,16 @@ public final class LinkScreen extends PanelScreen {
             return;
         }
         TvRemote.play(screen, service, page.get());
+        minecraft.setScreen(null);
+    }
+
+    private void enqueue() {
+        Optional<String> page = toPage.apply(linkText);
+        if (page.isEmpty()) {
+            error = Component.translatable(key("bad_link." + service.id()));
+            return;
+        }
+        TvRemote.enqueue(screen, service, page.get(), VideoLinks.label(page.get()));
         minecraft.setScreen(null);
     }
 

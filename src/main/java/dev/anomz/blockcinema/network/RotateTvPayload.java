@@ -74,12 +74,11 @@ public record RotateTvPayload(BlockPos origin) implements CustomPacketPayload {
                 level.setBlock(cell, joined, Block.UPDATE_ALL);
             }
         }
-        // What it plays lives on the screen's origin TV, which is a different corner now.
+        // What it plays and its queue live on the screen's origin TV, which is a different corner now.
         TvLayout turnedLayout = TvLayout.of(level, payload.origin(), level.getBlockState(payload.origin()));
-        if (source != null && !turnedLayout.origin().equals(payload.origin())
+        if ((source != null || !tv.queue().isEmpty()) && !turnedLayout.origin().equals(payload.origin())
                 && level.getBlockEntity(turnedLayout.origin()) instanceof TvBlockEntity newOrigin) {
-            tv.setSource(null);
-            newOrigin.setSource(source);
+            tv.moveScreenTo(newOrigin);
         }
     }
 }

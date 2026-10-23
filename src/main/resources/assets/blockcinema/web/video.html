@@ -51,6 +51,11 @@
     console.log('[blockcinema-error] ' + code);
   }
 
+  // The video ended, so the screen's queue can go on: "[blockcinema-ended]".
+  function reportEnded() {
+    console.log('[blockcinema-ended]');
+  }
+
   // Called by the mod to jump to a time, in seconds.
   window.blockcinemaSeek = function (seconds) {
     video.currentTime = Math.max(0, seconds);
@@ -113,6 +118,7 @@
   });
   video.addEventListener('ended', function () {
     show('The end');
+    reportEnded();
   });
   video.play().catch(function () {});
 </script>

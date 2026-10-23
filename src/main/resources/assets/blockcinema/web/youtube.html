@@ -48,6 +48,11 @@
     console.log('[blockcinema-error] ' + code);
   }
 
+  // The video ended, so the screen's queue can go on: "[blockcinema-ended]".
+  function reportEnded() {
+    console.log('[blockcinema-ended]');
+  }
+
   // Called by the mod to jump to a time, in seconds.
   window.blockcinemaSeek = function (seconds) {
     if (ready) {
@@ -108,6 +113,8 @@
         onStateChange: function (event) {
           if (event.data === YT.PlayerState.PLAYING) {
             reportError('none');
+          } else if (event.data === YT.PlayerState.ENDED) {
+            reportEnded();
           }
         },
         onReady: function (event) {

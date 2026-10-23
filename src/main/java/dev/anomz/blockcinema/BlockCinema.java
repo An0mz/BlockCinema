@@ -6,8 +6,10 @@ import com.mojang.logging.LogUtils;
 
 import dev.anomz.blockcinema.network.ChangeTvPayload;
 import dev.anomz.blockcinema.network.ControlTvPayload;
+import dev.anomz.blockcinema.network.QueueTvPayload;
 import dev.anomz.blockcinema.network.RotateTvPayload;
 import dev.anomz.blockcinema.network.TvRequests;
+import dev.anomz.blockcinema.network.VideoEndedPayload;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.common.Mod;
@@ -32,7 +34,9 @@ public final class BlockCinema {
         event.registrar("1")
                 .playToServer(ChangeTvPayload.TYPE, ChangeTvPayload.STREAM_CODEC, ChangeTvPayload::handle)
                 .playToServer(ControlTvPayload.TYPE, ControlTvPayload.STREAM_CODEC, ControlTvPayload::handle)
-                .playToServer(RotateTvPayload.TYPE, RotateTvPayload.STREAM_CODEC, RotateTvPayload::handle);
+                .playToServer(RotateTvPayload.TYPE, RotateTvPayload.STREAM_CODEC, RotateTvPayload::handle)
+                .playToServer(QueueTvPayload.TYPE, QueueTvPayload.STREAM_CODEC, QueueTvPayload::handle)
+                .playToServer(VideoEndedPayload.TYPE, VideoEndedPayload.STREAM_CODEC, VideoEndedPayload::handle);
     }
 
     private static void onLoggedOut(PlayerEvent.PlayerLoggedOutEvent event) {

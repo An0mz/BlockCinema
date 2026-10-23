@@ -1,6 +1,9 @@
 package dev.anomz.blockcinema.client.screen;
 
+import java.util.List;
+
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvQueueEntry;
 import dev.anomz.blockcinema.TvServerConfig;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
@@ -36,6 +39,8 @@ public final class TvScreen extends PanelScreen {
     private static final int TILE_H = 40;
     private static final int GAP = 8;
     private static final int SKIP_SECONDS = 10;
+    private static final int QUEUE_ROWS = 3;
+    private static final int QUEUE_ROW_H = 14;
 
     /** The screen's origin; it moves when a floor or ceiling screen is turned. */
     private BlockPos screen;
@@ -47,6 +52,8 @@ public final class TvScreen extends PanelScreen {
     private float volumeBeforeMute = 1;
     private int cardY;
     private int sectionY;
+    private int queueY;
+    private List<TvQueueEntry> builtQueue = List.of();
     private int statusY;
     private Component status = Component.empty();
 
@@ -68,7 +75,7 @@ public final class TvScreen extends PanelScreen {
     @Override
     protected int panelHeight() {
         boolean on = TvRemote.source(screen) != null;
-        return Ui.HEADER + Ui.PAD + (on ? CARD_H + 12 : 0) + 14 + 2 * TILE_H + GAP + 8 + 14 + Ui.PAD;
+        return Ui.HEADER + Ui.PAD + (on ? CARD_H + 12 : 0) + queueHeight() + 14 + 2 * TILE_H + GAP + 8 + 14 + Ui.PAD;
     }
 
     @Override
@@ -91,6 +98,12 @@ public final class TvScreen extends PanelScreen {
             addControls(x, y, w);
             y += CARD_H + 12;
         }
+        builtQueue = queue();
+        queueY = y;
+        if (!builtQueue.isEmpty()) {
+            addQueue(x, y, w);
+            y += queueHeight();
+        }
         sectionY = y;
         y += 14;
         int tileW = (w - GAP) / 2;
@@ -110,6 +123,28 @@ public final class TvScreen extends PanelScreen {
         int privacyW = font.width(privacy) + 12;
         addRenderableWidget(new TextButton(x + w - privacyW, statusY - 3, privacyW, 14, privacy, false,
                 () -> minecraft.setScreen(new AgreementScreen(this, null))));
+    }
+
+    private List<TvQueueEntry> queue() {
+        return minecraft != null && minecraft.level != null && minecraft.level.getBlockEntity(screen) instanceof TvBlockEntity tv
+                ? List.copyOf(tv.queue()) : List.of();
+    }
+
+    private int queueHeight() {
+        int rows = Math.min(queue().size(), QUEUE_ROWS);
+        return rows == 0 ? 0 : 14 + rows * QUEUE_ROW_H + (queue().size() > QUEUE_ROWS ? QUEUE_ROW_H : 0) + 8;
+    }
+
+    /** "Up next": the first queued videos with a remove button each, and skip to the next one. */
+    private void addQueue(int x, int y, int w) {
+        Component skip = Component.translatable(key("skip_to_next"));
+        int skipW = font.width(skip) + 12;
+        addRenderableWidget(new TextButton(x + w - skipW, y - 3, skipW, 14, skip, false, () -> TvRemote.next(screen)));
+        for (int i = 0; i < Math.min(builtQueue.size(), QUEUE_ROWS); i++) {
+            int index = i;
+            addRenderableWidget(new IconButton(x + w - 14, y + 14 + i * QUEUE_ROW_H, 12, Icon.CLOSE,
+                    Component.translatable(key("remove_from_queue")), IconButton.Style.DANGER, () -> TvRemote.removeQueued(screen, index)));
+        }
     }
 
     private static Icon icon(TvService service) {
@@ -186,8 +221,8 @@ public final class TvScreen extends PanelScreen {
                 return;
             }
         }
-        // Turned on or off meanwhile (maybe by another player): the controls come or go.
-        if ((TvRemote.source(screen) != null) != builtOn) {
+        // Turned on or off, or the queue changed, meanwhile (maybe by another player): rebuild.
+        if ((TvRemote.source(screen) != null) != builtOn || !queue().equals(builtQueue)) {
             rebuildWidgets();
         }
         if (timeBar != null) {
@@ -247,6 +282,23 @@ public final class TvScreen extends PanelScreen {
                 String right = position == null ? "--:--" : TimeBar.format(position.length());
                 g.drawString(font, left, x + 10, timeY, Ui.TEXT_DIM, false);
                 g.drawString(font, right, x + w - 10 - font.width(right), timeY, Ui.TEXT_DIM, false);
+            }
+        }
+        if (!builtQueue.isEmpty()) {
+            g.drawString(font, Component.translatable(key("up_next")), x, queueY, Ui.TEXT_FAINT, false);
+            for (int i = 0; i < Math.min(builtQueue.size(), QUEUE_ROWS); i++) {
+                TvQueueEntry entry = builtQueue.get(i);
+                String name = entry.title().isEmpty() ? VideoLinks.label(entry.page()) : entry.title();
+                String line = Component.translatable(entry.service().translationKey()).getString() + " · " + name;
+                int rowY = queueY + 14 + i * QUEUE_ROW_H + 2;
+                g.drawString(font, font.plainSubstrByWidth(line, w - 24 - 70), x, rowY, Ui.TEXT, false);
+                String by = entry.ownerName();
+                g.drawString(font, font.plainSubstrByWidth(by, 64), x + w - 20 - font.width(font.plainSubstrByWidth(by, 64)), rowY,
+                        Ui.TEXT_FAINT, false);
+            }
+            if (builtQueue.size() > QUEUE_ROWS) {
+                g.drawString(font, Component.translatable(key("more_queued"), builtQueue.size() - QUEUE_ROWS), x,
+                        queueY + 14 + QUEUE_ROWS * QUEUE_ROW_H + 2, Ui.TEXT_DIM, false);
             }
         }
         g.drawString(font, Component.translatable(key("watch")), x, sectionY, Ui.TEXT_FAINT, false);

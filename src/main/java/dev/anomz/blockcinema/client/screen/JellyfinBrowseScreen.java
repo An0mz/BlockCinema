@@ -2,10 +2,13 @@ package dev.anomz.blockcinema.client.screen;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 
 import org.jetbrains.annotations.Nullable;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvPageRules;
+import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinApi;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinLogin;
@@ -38,6 +41,8 @@ public final class JellyfinBrowseScreen extends PanelScreen {
     private List<JellyfinApi.Item> items;
     private ItemList list;
     private TextButton open;
+    @Nullable
+    private TextButton queue;
     private Component status = Component.empty();
     private boolean statusIsError;
     private boolean loading;
@@ -89,6 +94,14 @@ public final class JellyfinBrowseScreen extends PanelScreen {
         open = addRenderableWidget(new TextButton(x + w - 90, bottomBarY(), 90, 20, Component.translatable(key("open")), true,
                 this::openSelected));
         open.active = false;
+        if (TvRemote.source(screen) != null) {
+            // Something plays already: a video can wait its turn instead.
+            queue = addRenderableWidget(new TextButton(x + w - 90 - 6 - 90, bottomBarY(), 90, 20,
+                    Component.translatable("screen." + BlockCinema.MODID + ".add_to_queue"), false, this::enqueueSelected));
+            queue.active = false;
+        } else {
+            queue = null;
+        }
         if (folderId == null) {
             addRenderableWidget(new TextButton(x, bottomBarY(), 80, 20, Component.translatable(key("log_out")), false, this::logOut));
         }
@@ -134,7 +147,32 @@ public final class JellyfinBrowseScreen extends PanelScreen {
         }
         open.active = false;
         setStatus(Component.translatable(key("starting")), false);
-        // Logins saved by older versions don't know the server's ID yet; it is what the TV shares.
+        // The server's ID is what the TV shares. Jellyfin keeps the watch position itself: start where it
+        // says. Everybody logged in to this server, this player included, then streams it with their own login.
+        withServerId(id -> {
+            TvRemote.playJellyfin(screen, id, item.id(), item.resumeSeconds());
+            if (!closed) {
+                minecraft.setScreen(null);
+            }
+        });
+    }
+
+    private void enqueueSelected() {
+        ItemList.Entry entry = list.getSelected();
+        if (entry == null || entry.item.folder()) {
+            return;
+        }
+        JellyfinApi.Item item = entry.item;
+        withServerId(id -> {
+            TvRemote.enqueue(screen, TvService.JELLYFIN, TvPageRules.jellyfinPage(id, item.id()), item.name());
+            if (!closed) {
+                minecraft.setScreen(null);
+            }
+        });
+    }
+
+    /** Runs {@code action} with the server's ID (fetched once for logins saved by older versions). */
+    private void withServerId(Consumer<String> action) {
         CompletableFuture<String> serverId = login.serverId().isEmpty()
                 ? api.serverId() : CompletableFuture.completedFuture(login.serverId());
         serverId.whenComplete((id, error) -> minecraft.execute(() -> {
@@ -150,12 +188,7 @@ public final class JellyfinBrowseScreen extends PanelScreen {
                 login = login.withServerId(id);
                 login.save();
             }
-            // Jellyfin keeps the watch position itself: start where it says. Everybody logged in to this
-            // server, this player included, then streams it with their own login.
-            TvRemote.playJellyfin(screen, id, item.id(), item.resumeSeconds());
-            if (!closed) {
-                minecraft.setScreen(null);
-            }
+            action.accept(id);
         }));
     }
 
@@ -195,6 +228,9 @@ public final class JellyfinBrowseScreen extends PanelScreen {
                 return;
             }
             open.active = entry != null;
+            if (queue != null) {
+                queue.active = entry != null && !entry.item.folder();
+            }
             open.setMessage(Component.translatable(key(entry != null && !entry.item.folder() ? "play" : "open")));
         }
 

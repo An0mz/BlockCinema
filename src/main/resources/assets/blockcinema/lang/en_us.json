@@ -107,5 +107,10 @@
   "screen.blockcinema.error.network": "The video couldn't be downloaded: check the link or your connection",
   "screen.blockcinema.error.decode": "The video is damaged or can't be decoded",
   "screen.blockcinema.error.unsupported": "This video's format can't be played",
-  "screen.blockcinema.error.load_failed": "The TV couldn't load: is your internet connection working?"
+  "screen.blockcinema.error.load_failed": "The TV couldn't load: is your internet connection working?",
+  "screen.blockcinema.add_to_queue": "Add to queue",
+  "screen.blockcinema.up_next": "Up next",
+  "screen.blockcinema.skip_to_next": "Skip to next",
+  "screen.blockcinema.remove_from_queue": "Remove from queue",
+  "screen.blockcinema.more_queued": "and %s more"
 }

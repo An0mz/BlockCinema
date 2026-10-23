@@ -107,5 +107,10 @@
   "screen.blockcinema.error.network": "La vidéo n'a pas pu être téléchargée : vérifiez le lien ou votre connexion",
   "screen.blockcinema.error.decode": "La vidéo est endommagée ou ne peut pas être décodée",
   "screen.blockcinema.error.unsupported": "Le format de cette vidéo ne peut pas être lu",
-  "screen.blockcinema.error.load_failed": "La télé n'a pas pu charger : votre connexion internet fonctionne-t-elle ?"
+  "screen.blockcinema.error.load_failed": "La télé n'a pas pu charger : votre connexion internet fonctionne-t-elle ?",
+  "screen.blockcinema.add_to_queue": "Ajouter à la file",
+  "screen.blockcinema.up_next": "À suivre",
+  "screen.blockcinema.skip_to_next": "Passer au suivant",
+  "screen.blockcinema.remove_from_queue": "Retirer de la file",
+  "screen.blockcinema.more_queued": "et %s de plus"
 }

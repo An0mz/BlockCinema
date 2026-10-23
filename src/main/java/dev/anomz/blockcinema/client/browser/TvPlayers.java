@@ -26,6 +26,7 @@ import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.client.Agreements;
 import dev.anomz.blockcinema.client.BlockCinemaClientConfig;
+import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinWatch;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
@@ -113,6 +114,8 @@ public final class TvPlayers {
         String resumeKey;
         /** Runs once with the last position when this stops playing (turned off, replaced, broken or too far away). */
         Consumer<Position> onStop;
+        /** Whether this player already told the server the video ended (once per video). */
+        boolean endedSent;
         /** What went wrong, as the page or the browser said (see {@link #error}); null when fine. */
         @Nullable
         String error;
@@ -201,6 +204,17 @@ public final class TvPlayers {
         for (Playing playing : PLAYING.values()) {
             if (playing.browser == browser) {
                 playing.position = new Position(time, length, paused);
+            }
+        }
+    }
+
+    /** A page says its video ended, on the client thread: the server can start the next queued one. */
+    static void reportEnded(CefBrowser browser) {
+        for (Long2ObjectMap.Entry<Playing> entry : PLAYING.long2ObjectEntrySet()) {
+            Playing playing = entry.getValue();
+            if (playing.browser == browser && !playing.endedSent) {
+                playing.endedSent = true;
+                TvRemote.ended(BlockPos.of(entry.getLongKey()), playing.key);
             }
         }
     }
@@ -436,6 +450,7 @@ public final class TvPlayers {
         playing.onStop = onStop;
         playing.position = null;
         playing.error = null;
+        playing.endedSent = false;
         playing.volume = -1;
         playing.lastSeenMillis = Util.getMillis();
         playing.lastSeekSyncMillis = Util.getMillis();
