@@ -116,6 +116,9 @@ public final class TvPlayers {
         /** The shared state the page was last brought in step with; null until the first check. */
         @Nullable
         TvSource synced;
+        /** Whether the page was last told to show captions; null until told. */
+        @Nullable
+        Boolean captions;
         /** The page has reported, so it's up and hears what the mod sends it. */
         boolean pageHeard;
         /** Fullscreen shows the vertical (Shorts) view. */
@@ -465,6 +468,19 @@ public final class TvPlayers {
         }
         syncState(playing, source, level.getGameTime(), now);
         updateVolume(playing, layout, player, now);
+        updateCaptions(playing);
+    }
+
+    /** Tells the page whether to show captions (YouTube's), once it is up and whenever the setting changes. */
+    private static void updateCaptions(Playing playing) {
+        boolean captions = BlockCinemaClientConfig.youtubeCaptions();
+        if (!playing.pageHeard || Boolean.valueOf(captions).equals(playing.captions)) {
+            return;
+        }
+        playing.captions = captions;
+        // The game's language, "fr_fr" -> "fr", for the caption track.
+        String language = Minecraft.getInstance().getLanguageManager().getSelected().split("_")[0];
+        run(playing, "window.blockcinemaCaptions && blockcinemaCaptions(" + captions + ", '" + language.replaceAll("[^a-z]", "") + "')");
     }
 
     private static Playing start(BlockPos origin, @Nullable Playing playing, String url, String key,
@@ -493,6 +509,7 @@ public final class TvPlayers {
         playing.endedSent = false;
         playing.listIndex = -1;
         playing.pageHeard = false;
+        playing.captions = null;
         playing.synced = null;
         playing.volume = -1;
         playing.lastSeenMillis = Util.getMillis();

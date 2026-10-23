@@ -33,6 +33,11 @@ public final class BlockCinemaClientConfig {
             .comment("The volume a TV starts at for you, in percent. Each TV's own volume can then be changed in its menu.")
             .defineInRange("startVolume", 100, 0, 100);
 
+    private static final ModConfigSpec.BooleanValue CAPTIONS = BUILDER
+            .comment("Show YouTube captions (in the game's language when the video has them). Off: no captions, even when",
+                    "YouTube would turn them on by itself.")
+            .define("youtubeCaptions", false);
+
     public static final ModConfigSpec SPEC = BUILDER.build();
 
     private BlockCinemaClientConfig() {
@@ -53,6 +58,10 @@ public final class BlockCinemaClientConfig {
 
     public static Quality quality() {
         return SPEC.isLoaded() ? QUALITY.get() : Quality.AUTO;
+    }
+
+    public static boolean youtubeCaptions() {
+        return SPEC.isLoaded() && CAPTIONS.get();
     }
 
     public static float startVolume() {

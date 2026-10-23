@@ -122,5 +122,6 @@
   "screen.blockcinema.exit_fullscreen": "Quitter le plein écran (Échap)",
   "screen.blockcinema.watch_here": "Regarder dans le monde",
   "screen.blockcinema.watch_help": "Molette : volume   Clic ou Espace : lecture/pause   Échap : quitter",
-  "screen.blockcinema.nothing_next": "Rien après : ajoutez des vidéos à la file"
+  "screen.blockcinema.nothing_next": "Rien après : ajoutez des vidéos à la file",
+  "blockcinema.configuration.youtubeCaptions": "Sous-titres YouTube"
 }

@@ -80,6 +80,34 @@
     }
   };
 
+  // Captions, from the player's setting: off unless turned on, even when YouTube would show them by itself
+  // (it does for a video in another language than the browser's). Applied again whenever a video starts.
+  var captions = false;
+  var captionLanguage = '';
+  window.blockcinemaCaptions = function (on, language) {
+    captions = on;
+    captionLanguage = language;
+    if (ready) {
+      applyCaptions();
+    }
+  };
+
+  function applyCaptions() {
+    try {
+      if (captions) {
+        player.loadModule('captions');
+        if (captionLanguage) {
+          player.setOption('captions', 'track', { languageCode: captionLanguage });
+        }
+      } else {
+        player.unloadModule('captions');
+        player.unloadModule('cc');
+      }
+    } catch (e) {
+      // The player has no captions module (yet): nothing to turn off.
+    }
+  }
+
   function apply() {
     player.setVolume(Math.round(volume * 100));
     var state = player.getPlayerState();
@@ -117,6 +145,7 @@
         onStateChange: function (event) {
           if (event.data === YT.PlayerState.PLAYING) {
             reportError('none');
+            applyCaptions();
           } else if (event.data === YT.PlayerState.ENDED) {
             // In a playlist, say which video comes next, so everyone moves on to it together.
             var at = list ? player.getPlaylistIndex() : -1;
@@ -130,6 +159,7 @@
         },
         onReady: function (event) {
           ready = true;
+          applyCaptions();
           setInterval(function () {
             var state = player.getPlayerState();
             if (list) {

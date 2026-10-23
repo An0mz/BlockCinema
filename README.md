@@ -62,6 +62,7 @@ TVs only show these services through their official players. There is no address
 | `maxScreens` | `4` | Most TVs playing at once; the closest play. |
 | `quality` | `AUTO` | `AUTO` (1080p for big screens and fullscreen), `P720` or `P1080`. |
 | `startVolume` | `100` | The volume a TV starts at, in percent. |
+| `youtubeCaptions` | `false` | Show YouTube captions, in the game's language when the video has them. Off hides them even when YouTube would turn them on by itself. |
 
 ## Server settings
 
