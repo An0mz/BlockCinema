@@ -330,5 +330,4 @@ public final class TvScreen extends PanelScreen {
             g.drawString(font, status, contentLeft(), statusY, Ui.TEXT_DIM, false);
         }
     }
-
 }

@@ -16,8 +16,8 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
  * Client to server, sent by the game itself: the video {@code page} on the screen at {@code origin} ended
- * here, so the playlist's video {@code nextInList} (or with -1, the next queued one) can start. Every viewer sends it; the first one for the video playing now
- * counts, and the others no longer match.
+ * here, so the playlist's video {@code nextInList} (or with -1, the next queued one) can start. Every
+ * viewer sends it; the first one for the video playing now counts, and the others no longer match.
  */
 public record VideoEndedPayload(BlockPos origin, String page, int nextInList) implements CustomPacketPayload {
     /** An "ended" this soon after a video started is ignored (a page that failed at once, or a hacked client). */

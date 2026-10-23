@@ -8,7 +8,7 @@ TVs only show these services through their official players. There is no address
 
 ## Features
 
-- **TV** block: right-click it to pick what to watch. TVs facing the same way in a filled rectangle (up to 16 wide and 9 tall) join into one seamless screen; the picture is always 16:9.
+- **TV** block: right-click it to pick what to watch. TVs facing the same way in a filled rectangle (up to 16 wide and 9 tall) join into one seamless screen; the picture is 16:9 (9:16 on screens taller than wide).
 - Screens on walls, **floors** and **ceilings**: look steeply down or up while placing a TV. The top of the picture points the way you face, and new floor or ceiling TVs line up with the ones next to them. The rotate button in the TV menu turns the picture a quarter turn.
 - **Diagonal TV**: a thin screen across the block at 45°. Diagonal TVs in a `\` or `/` line (and stacked up) join into one screen too.
 - **TV Remote**: sneak + right-click a TV to link it, then right-click anywhere within 48 blocks to open its menu.
@@ -22,7 +22,7 @@ TVs only show these services through their official players. There is no address
 - **Portrait screens**: a wall of TVs taller than wide shows a vertical 9:16 picture, so Shorts fill it.
 - **Queue**: while a TV plays, add more videos to its queue from the link screen or the Jellyfin library; they play one after another for everyone, and the TV menu shows what's up next (remove entries or skip).
 - **Redstone**: a signal on any TV of a screen pauses it for everyone; when the signal stops, it plays on (a video paused by hand stays paused).
-- Media controls in the TV menu: play/pause, a seek bar, -10s/+10s, the TV's own volume and mute, and fullscreen (Space, Left/Right, Up/Down, Esc).
+- Media controls in the TV menu: play/pause, a seek bar, -10s/+10s, previous/next, the TV's own volume and mute, and fullscreen (where Space, Left/Right, Up/Down and Esc work too).
 - Sharp picture: big screens and fullscreen play in 1080p.
 - Sound fades with distance, following your Master and Jukebox/Note Blocks volume.
 - YouTube and video links resume where you left them.
