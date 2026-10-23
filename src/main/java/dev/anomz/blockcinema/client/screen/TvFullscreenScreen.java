@@ -20,8 +20,8 @@ import net.minecraft.resources.ResourceLocation;
 /**
  * A TV's picture filling the game window: 16:9 with a control bar below it, or in the vertical view
  * (for Shorts) 9:16 with its buttons beside it. Nothing is drawn over the picture (YouTube's terms forbid
- * covering its player). A click on the picture pauses. In the vertical view the wheel and up/down go to
- * the next or previous video; in the wide view they change the volume. Esc goes back.
+ * covering its player). A click on the picture pauses, the wheel and up/down change the volume, Esc goes
+ * back.
  */
 public final class TvFullscreenScreen extends Screen {
     private static final float VOLUME_STEP = 0.1f;
@@ -34,7 +34,6 @@ public final class TvFullscreenScreen extends Screen {
 
     private final Screen parent;
     private final BlockPos screen;
-    private final SkipGate scrollGate = new SkipGate();
     private boolean vertical;
     private TimeBar timeBar;
     private VolumeSlider volume;
@@ -202,14 +201,7 @@ public final class TvFullscreenScreen extends Screen {
         if (scrollY == 0 || super.mouseScrolled(mouseX, mouseY, scrollX, scrollY)) {
             return true;
         }
-        if (vertical) {
-            // Shorts-style: down for the next video, up for the previous one.
-            if (scrollGate.allow()) {
-                skipVideo(scrollY < 0 ? 1 : -1);
-            }
-        } else {
-            setVolume(TvPlayers.volume(screen) + (scrollY > 0 ? WHEEL_VOLUME_STEP : -WHEEL_VOLUME_STEP));
-        }
+        setVolume(TvPlayers.volume(screen) + (scrollY > 0 ? WHEEL_VOLUME_STEP : -WHEEL_VOLUME_STEP));
         return true;
     }
 
@@ -231,20 +223,8 @@ public final class TvFullscreenScreen extends Screen {
             case GLFW.GLFW_KEY_SPACE -> TvRemote.togglePause(screen);
             case GLFW.GLFW_KEY_LEFT -> TvRemote.skip(screen, -SKIP_SECONDS);
             case GLFW.GLFW_KEY_RIGHT -> TvRemote.skip(screen, SKIP_SECONDS);
-            case GLFW.GLFW_KEY_UP -> {
-                if (vertical) {
-                    skipVideo(-1);
-                } else {
-                    setVolume(TvPlayers.volume(screen) + VOLUME_STEP);
-                }
-            }
-            case GLFW.GLFW_KEY_DOWN -> {
-                if (vertical) {
-                    skipVideo(1);
-                } else {
-                    setVolume(TvPlayers.volume(screen) - VOLUME_STEP);
-                }
-            }
+            case GLFW.GLFW_KEY_UP -> setVolume(TvPlayers.volume(screen) + VOLUME_STEP);
+            case GLFW.GLFW_KEY_DOWN -> setVolume(TvPlayers.volume(screen) - VOLUME_STEP);
             default -> {
                 return super.keyPressed(keyCode, scanCode, modifiers);
             }

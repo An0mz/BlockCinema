@@ -6,6 +6,7 @@ import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.client.TvRemote;
+import dev.anomz.blockcinema.client.browser.TvPlayers;
 import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
@@ -14,20 +15,21 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 
 /**
- * Watching a TV in the world, locked onto it like a Shorts feed: the camera turns to the screen and stays
- * there, the HUD and the mouse cursor are hidden, the wheel (or up/down) goes to the next or previous
- * video, a click (or Space) pauses, Esc leaves. A short help line shows at the bottom for a moment.
+ * Watching a TV in the world, locked onto it: the camera turns to the screen and stays there, the HUD and
+ * the mouse cursor are hidden, the wheel (or up/down) changes the volume, a click (or Space) pauses, Esc
+ * leaves. A short help line shows at the bottom for a moment, and the volume while it changes.
  */
 public final class TvWatchScreen extends Screen {
     private static final int HELP_MILLIS = 4000;
     private static final int HELP_FADE_MILLIS = 1000;
+    private static final float WHEEL_VOLUME_STEP = 0.05f;
+    private static final float VOLUME_STEP = 0.1f;
 
     private final BlockPos screen;
-    private final SkipGate scrollGate = new SkipGate();
     /** Whether this screen hid the HUD (so it shows it again when left). */
     private boolean hidGui;
     private long openedMillis;
-    /** Why the last skip did nothing, shown in place of the help for a moment. */
+    /** The volume after the last change, shown in place of the help for a moment. */
     private Component notice = Component.empty();
     private long noticeMillis;
 
@@ -61,12 +63,10 @@ public final class TvWatchScreen extends Screen {
         }
     }
 
-    private void skipVideo(int direction) {
-        Component problem = TvRemote.skipVideo(screen, direction);
-        if (problem != null) {
-            notice = problem;
-            noticeMillis = Util.getMillis();
-        }
+    private void changeVolume(float change) {
+        TvPlayers.setVolume(screen, TvPlayers.volume(screen) + change);
+        notice = Component.translatable(key("volume"), Math.round(TvPlayers.volume(screen) * 100));
+        noticeMillis = Util.getMillis();
     }
 
     @Override
@@ -95,8 +95,8 @@ public final class TvWatchScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
-        if (scrollY != 0 && scrollGate.allow()) {
-            skipVideo(scrollY < 0 ? 1 : -1);
+        if (scrollY != 0) {
+            changeVolume(scrollY > 0 ? WHEEL_VOLUME_STEP : -WHEEL_VOLUME_STEP);
         }
         return true;
     }
@@ -113,8 +113,8 @@ public final class TvWatchScreen extends Screen {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         switch (keyCode) {
             case GLFW.GLFW_KEY_SPACE -> TvRemote.togglePause(screen);
-            case GLFW.GLFW_KEY_UP -> skipVideo(-1);
-            case GLFW.GLFW_KEY_DOWN -> skipVideo(1);
+            case GLFW.GLFW_KEY_UP -> changeVolume(VOLUME_STEP);
+            case GLFW.GLFW_KEY_DOWN -> changeVolume(-VOLUME_STEP);
             default -> {
                 return super.keyPressed(keyCode, scanCode, modifiers);
             }
