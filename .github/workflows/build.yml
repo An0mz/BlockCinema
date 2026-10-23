@@ -19,6 +19,10 @@ jobs:
       - name: Build
         run: ./gradlew build
 
+      # Server-side tests in a real world: screens, requests, the queue, turning and redstone.
+      - name: Game tests
+        run: ./gradlew runGameTestServer
+
       - name: Upload mod jar
         uses: actions/upload-artifact@v4
         with:

@@ -37,7 +37,14 @@ public record RotateTvPayload(BlockPos origin) implements CustomPacketPayload {
 
     /** Runs on the server thread. */
     public static void handle(RotateTvPayload payload, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer player) || !TvRequests.rateLimitAllows(player)) {
+        if (context.player() instanceof ServerPlayer player) {
+            apply(player, payload);
+        }
+    }
+
+    /** What the server does with it from {@code player} (also used by the game tests). */
+    public static void apply(ServerPlayer player, RotateTvPayload payload) {
+        if (!TvRequests.rateLimitAllows(player)) {
             return;
         }
         TvBlockEntity tv = TvRequests.screen(player, payload.origin());

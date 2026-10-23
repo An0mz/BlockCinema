@@ -50,7 +50,14 @@ public record ChangeTvPayload(BlockPos origin, int service, String page, double 
 
     /** Runs on the server thread. */
     public static void handle(ChangeTvPayload payload, IPayloadContext context) {
-        if (!(context.player() instanceof ServerPlayer player) || !TvRequests.rateLimitAllows(player)
+        if (context.player() instanceof ServerPlayer player) {
+            apply(player, payload);
+        }
+    }
+
+    /** What the server does with it from {@code player} (also used by the game tests). */
+    public static void apply(ServerPlayer player, ChangeTvPayload payload) {
+        if (!TvRequests.rateLimitAllows(player)
                 || payload.service() < 0 || payload.service() >= TvService.values().length) {
             return;
         }

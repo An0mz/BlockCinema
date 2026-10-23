@@ -67,11 +67,6 @@ public final class TvPlayers {
      * playing in a player the user can't see, so our YouTube page pauses until it is seen again.
      */
     private static final long OUT_OF_SIGHT_MILLIS = 3000;
-    /** Being this far off the shared position makes the screen jump back in step. */
-    private static final double MAX_DRIFT_SECONDS = 3;
-    /** At most one catch-up jump this often, so a buffering video isn't pushed around. */
-    private static final long SEEK_SYNC_MILLIS = 5000;
-    private static final long PAUSE_SYNC_MILLIS = 1500;
 
     private static final Long2ObjectMap<Playing> PLAYING = new Long2ObjectOpenHashMap<>();
     private static final WatchPositions POSITIONS =
@@ -457,24 +452,21 @@ public final class TvPlayers {
         return playing;
     }
 
-    /** Pauses, resumes or jumps the page to match the shared state, gently. */
+    /** Pauses, resumes or jumps the page to match the shared state, gently (see {@link SyncPlan}). */
     private static void syncState(Playing playing, TvSource source, long gameTime, long now) {
         Position position = playing.position;
         if (position == null) {
             return;
         }
-        boolean paused = source.paused() || gamePaused;
-        // An out-of-sight YouTube page pauses itself; it is brought back in step once seen again.
-        if (paused != position.paused() && (playing.visible || paused)
-                && now - playing.lastPauseSyncMillis > PAUSE_SYNC_MILLIS) {
+        SyncPlan plan = SyncPlan.of(source.paused(), gamePaused, playing.visible, source.position(gameTime), position.time(),
+                position.length(), position.paused(), now - playing.lastPauseSyncMillis, now - playing.lastSeekSyncMillis);
+        if (plan.setPaused() != null) {
             playing.lastPauseSyncMillis = now;
-            run(playing, "window.blockcinemaSetPaused && blockcinemaSetPaused(" + paused + ")");
+            run(playing, "window.blockcinemaSetPaused && blockcinemaSetPaused(" + plan.setPaused() + ")");
         }
-        double expected = source.position(gameTime);
-        if (!gamePaused && playing.visible && position.seekable() && expected < position.length()
-                && Math.abs(position.time() - expected) > MAX_DRIFT_SECONDS && now - playing.lastSeekSyncMillis > SEEK_SYNC_MILLIS) {
+        if (plan.seekTo() != null) {
             playing.lastSeekSyncMillis = now;
-            run(playing, String.format(Locale.ROOT, "window.blockcinemaSeek && blockcinemaSeek(%.1f)", expected));
+            run(playing, String.format(Locale.ROOT, "window.blockcinemaSeek && blockcinemaSeek(%.1f)", plan.seekTo()));
         }
     }
 
