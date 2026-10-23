@@ -45,6 +45,12 @@
         + ' ' + (paused ? 1 : 0));
   }
 
+  // What went wrong, for the mod's messages ("none" when playing again):
+  // "[blockcinema-error] <code>".
+  function reportError(code) {
+    console.log('[blockcinema-error] ' + code);
+  }
+
   // Called by the mod to jump to a time, in seconds.
   window.blockcinemaSeek = function (seconds) {
     video.currentTime = Math.max(0, seconds);
@@ -81,6 +87,7 @@
     hls.on(Hls.Events.ERROR, function (event, data) {
       if (data.fatal) {
         show('Can\'t play this video (' + data.details + ')');
+        reportError(data.type === Hls.ErrorTypes.NETWORK_ERROR ? 'network' : data.type === Hls.ErrorTypes.MEDIA_ERROR ? 'decode' : 'playback');
       }
     });
     hls.loadSource(src);
@@ -98,6 +105,11 @@
   }, 1000);
   video.addEventListener('error', function () {
     show('Can\'t play this video' + (video.error ? ' (error ' + video.error.code + ')' : ''));
+    var codes = { 2: 'network', 3: 'decode', 4: 'unsupported' };
+    reportError((video.error && codes[video.error.code]) || 'playback');
+  });
+  video.addEventListener('playing', function () {
+    reportError('none');
   });
   video.addEventListener('ended', function () {
     show('The end');

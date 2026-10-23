@@ -34,6 +34,12 @@
         + ' ' + (paused ? 1 : 0));
   }
 
+  // What went wrong, for the mod's messages ("none" when playing again):
+  // "[blockcinema-error] <code>".
+  function reportError(code) {
+    console.log('[blockcinema-error] ' + code);
+  }
+
   // Live streams can't be seeked.
   window.blockcinemaSeek = function (seconds) {
   };
@@ -58,6 +64,12 @@
       height: '100%',
       autoplay: true,
       muted: false
+    });
+    player.addEventListener(Twitch.Player.OFFLINE, function () {
+      reportError('offline');
+    });
+    player.addEventListener(Twitch.Player.PLAYING, function () {
+      reportError('none');
     });
     player.addEventListener(Twitch.Player.READY, function () {
       ready = true;

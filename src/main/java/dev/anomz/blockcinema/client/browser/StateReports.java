@@ -2,6 +2,7 @@ package dev.anomz.blockcinema.client.browser;
 
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.regex.Pattern;
 
 import org.cef.CefSettings;
 import org.cef.browser.CefBrowser;
@@ -15,6 +16,17 @@ import net.minecraft.client.Minecraft;
  */
 final class StateReports extends CefDisplayHandlerAdapter {
     static final String PREFIX = "[blockcinema-state] ";
+    static final String ERROR_PREFIX = "[blockcinema-error] ";
+    private static final Pattern ERROR_CODE = Pattern.compile("[a-z_]{1,20}");
+
+    /** The error code in an error line ("none" when playing again), or null if it isn't one. */
+    static String parseError(String message) {
+        if (!message.startsWith(ERROR_PREFIX)) {
+            return null;
+        }
+        String code = message.substring(ERROR_PREFIX.length());
+        return ERROR_CODE.matcher(code).matches() ? code : null;
+    }
 
     /** Time, length and paused from a report line, or null if it isn't one. */
     static double[] parse(String message) {
@@ -49,8 +61,16 @@ final class StateReports extends CefDisplayHandlerAdapter {
     @Override
     public boolean onConsoleMessage(CefBrowser browser, CefSettings.LogSeverity level, String message, String source,
             int line) {
+        if (!fromOurPage(source)) {
+            return false;
+        }
+        String error = parseError(message);
+        if (error != null) {
+            Minecraft.getInstance().execute(() -> TvPlayers.reportError(browser, "none".equals(error) ? null : error));
+            return true;
+        }
         double[] report = parse(message);
-        if (report == null || !fromOurPage(source)) {
+        if (report == null) {
             return false;
         }
         Minecraft.getInstance().execute(() -> TvPlayers.report(browser, report[0], report[1], report[2] != 0));

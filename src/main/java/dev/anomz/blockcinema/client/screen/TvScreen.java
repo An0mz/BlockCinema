@@ -250,6 +250,11 @@ public final class TvScreen extends PanelScreen {
             }
         }
         g.drawString(font, Component.translatable(key("watch")), x, sectionY, Ui.TEXT_FAINT, false);
+        String error = TvPlayers.error(screen);
+        if (error != null && status.getString().isEmpty()) {
+            g.drawString(font, font.plainSubstrByWidth(Component.translatable(key("error." + error)).getString(), w - 110),
+                    x, statusY, Ui.DANGER, false);
+        }
         if (!status.getString().isEmpty()) {
             g.drawString(font, status, contentLeft(), statusY, Ui.TEXT_DIM, false);
         }

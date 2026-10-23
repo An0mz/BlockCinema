@@ -113,7 +113,7 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         vertex(consumer, pose, left, bottom, front, u0, vBottom);
         vertex(consumer, pose, right, bottom, front, u1, vBottom);
         vertex(consumer, pose, right, top, front, u1, vTop);
-        if (picture == null && layout.col() == 0 && layout.row() == 0) {
+        if (layout.col() == 0 && layout.row() == 0 && (picture == null || ownPageError(tv))) {
             drawCard(tv, layout, poseStack, buffers, picW, screenW, cell, front);
         }
         poseStack.popPose();
@@ -127,13 +127,18 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
     private static void drawCard(TvBlockEntity origin, TvLayout layout, PoseStack poseStack, MultiBufferSource buffers,
             float picW, float screenW, float cell, float front) {
         TvSource source = origin.source();
-        if (source == null || TvPlayers.isPlaying(origin.getBlockPos())) {
+        if (source == null || TvPlayers.isPlaying(origin.getBlockPos()) && !ownPageError(origin)) {
             return;
         }
         Component text;
         String why;
         TvPlayers.Hidden hidden = TvPlayers.hidden(origin.getBlockPos());
-        if (hidden != null) {
+        if (ownPageError(origin)) {
+            // Only over our own video page: YouTube's and Twitch's players show their own errors and
+            // mustn't be covered.
+            text = Component.translatable(source.service().translationKey());
+            why = "error." + TvPlayers.error(origin.getBlockPos());
+        } else if (hidden != null) {
             // This player's own settings keep it from playing here.
             text = Component.translatable(source.service().translationKey());
             why = "hidden." + hidden.name().toLowerCase(Locale.ROOT);
@@ -162,6 +167,13 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         font.drawInBatch(hint, -font.width(hint) / 2f, 1, 0xFFAAAAAA, false,
                 poseStack.last().pose(), buffers, Font.DisplayMode.NORMAL, 0xC0000000, LightTexture.FULL_BRIGHT);
         poseStack.popPose();
+    }
+
+    /** Whether the screen's own video page (links and Jellyfin) reported an error. */
+    private static boolean ownPageError(TvBlockEntity origin) {
+        TvSource source = origin.source();
+        return source != null && (source.service() == TvService.DIRECT_LINK || source.service() == TvService.JELLYFIN)
+                && TvPlayers.error(origin.getBlockPos()) != null;
     }
 
     /** Whether the camera is on the screen side of this TV's screen. */

@@ -9,6 +9,9 @@ import java.util.function.Consumer;
 
 import org.cef.CefClient;
 import org.cef.browser.CefBrowser;
+import org.cef.browser.CefFrame;
+import org.cef.handler.CefLoadHandler.ErrorCode;
+import org.cef.handler.CefLoadHandlerAdapter;
 import org.jetbrains.annotations.Nullable;
 
 import com.cinemamod.mcef.MCEF;
@@ -110,6 +113,9 @@ public final class TvPlayers {
         String resumeKey;
         /** Runs once with the last position when this stops playing (turned off, replaced, broken or too far away). */
         Consumer<Position> onStop;
+        /** What went wrong, as the page or the browser said (see {@link #error}); null when fine. */
+        @Nullable
+        String error;
         /** The page's last report (see {@link StateReports}); null until the first one. */
         @Nullable
         Position position;
@@ -197,6 +203,25 @@ public final class TvPlayers {
                 playing.position = new Position(time, length, paused);
             }
         }
+    }
+
+    /** A page's or the browser's error report, on the client thread; null clears it. */
+    static void reportError(CefBrowser browser, @Nullable String code) {
+        for (Playing playing : PLAYING.values()) {
+            if (playing.browser == browser) {
+                playing.error = code;
+            }
+        }
+    }
+
+    /**
+     * What went wrong playing on the screen at {@code origin} (a code for the
+     * {@code screen.blockcinema.error.*} texts), or null.
+     */
+    @Nullable
+    public static String error(BlockPos origin) {
+        Playing playing = PLAYING.get(origin.asLong());
+        return playing == null ? null : playing.error;
     }
 
     /** The TV's own volume, 0 to 1 (1 when nothing plays). */
@@ -410,6 +435,7 @@ public final class TvPlayers {
         playing.resumeKey = resumeKey;
         playing.onStop = onStop;
         playing.position = null;
+        playing.error = null;
         playing.volume = -1;
         playing.lastSeenMillis = Util.getMillis();
         playing.lastSeekSyncMillis = Util.getMillis();
@@ -498,6 +524,15 @@ public final class TvPlayers {
             handle.addLifeSpanHandler(new NavigationGuard.Popups());
             client = new MCEFClient(handle);
             client.addDisplayHandler(new StateReports());
+            client.addLoadHandler(new CefLoadHandlerAdapter() {
+                // Our page itself didn't load (no internet, for one); aborted loads are our own cancels.
+                @Override
+                public void onLoadError(CefBrowser browser, CefFrame frame, ErrorCode errorCode, String errorText, String failedUrl) {
+                    if (frame.isMain() && errorCode != ErrorCode.ERR_ABORTED) {
+                        Minecraft.getInstance().execute(() -> reportError(browser, "load_failed"));
+                    }
+                }
+            });
         }
         return client;
     }

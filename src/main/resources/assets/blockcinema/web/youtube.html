@@ -42,6 +42,12 @@
         + ' ' + (paused ? 1 : 0));
   }
 
+  // What went wrong, for the mod's messages ("none" when playing again):
+  // "[blockcinema-error] <code>".
+  function reportError(code) {
+    console.log('[blockcinema-error] ' + code);
+  }
+
   // Called by the mod to jump to a time, in seconds.
   window.blockcinemaSeek = function (seconds) {
     if (ready) {
@@ -95,6 +101,15 @@
       videoId: video || undefined,
       playerVars: vars,
       events: {
+        onError: function (event) {
+          var codes = { 2: 'bad_video', 5: 'playback', 100: 'not_found', 101: 'no_embed', 150: 'no_embed' };
+          reportError(codes[event.data] || 'playback');
+        },
+        onStateChange: function (event) {
+          if (event.data === YT.PlayerState.PLAYING) {
+            reportError('none');
+          }
+        },
         onReady: function (event) {
           ready = true;
           setInterval(function () {

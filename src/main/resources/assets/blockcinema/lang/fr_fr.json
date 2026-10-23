@@ -98,5 +98,14 @@
   "blockcinema.configuration.onlyTvYouLookAt": "Seulement la télé que je regarde",
   "blockcinema.configuration.maxScreens": "Nombre max de télés allumées",
   "blockcinema.configuration.quality": "Qualité d'image",
-  "blockcinema.configuration.startVolume": "Volume de départ des télés (%)"
+  "blockcinema.configuration.startVolume": "Volume de départ des télés (%)",
+  "screen.blockcinema.error.bad_video": "Ce lien ne mène pas à une vidéo lisible",
+  "screen.blockcinema.error.not_found": "Cette vidéo a été supprimée ou est privée",
+  "screen.blockcinema.error.no_embed": "Le propriétaire de la vidéo n'autorise pas sa lecture hors de YouTube",
+  "screen.blockcinema.error.playback": "Cette vidéo n'a pas pu être lue",
+  "screen.blockcinema.error.offline": "Cette chaîne est hors ligne",
+  "screen.blockcinema.error.network": "La vidéo n'a pas pu être téléchargée : vérifiez le lien ou votre connexion",
+  "screen.blockcinema.error.decode": "La vidéo est endommagée ou ne peut pas être décodée",
+  "screen.blockcinema.error.unsupported": "Le format de cette vidéo ne peut pas être lu",
+  "screen.blockcinema.error.load_failed": "La télé n'a pas pu charger : votre connexion internet fonctionne-t-elle ?"
 }

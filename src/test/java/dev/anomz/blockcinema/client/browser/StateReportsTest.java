@@ -1,6 +1,7 @@
 package dev.anomz.blockcinema.client.browser;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -16,6 +17,15 @@ class StateReportsTest {
         assertNull(StateReports.parse("[blockcinema-state] NaN 2 0"));
         assertNull(StateReports.parse("[blockcinema-state] -1 2 0"));
         assertNull(StateReports.parse("something else"));
+    }
+
+    @Test
+    void parsesErrors() {
+        assertEquals("no_embed", StateReports.parseError("[blockcinema-error] no_embed"));
+        assertEquals("none", StateReports.parseError("[blockcinema-error] none"));
+        assertNull(StateReports.parseError("[blockcinema-error] <b>"));
+        assertNull(StateReports.parseError("[blockcinema-error] "));
+        assertNull(StateReports.parseError("[blockcinema-state] 1 2 0"));
     }
 
     @Test
