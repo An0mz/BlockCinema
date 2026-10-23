@@ -22,6 +22,7 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.client.event.RenderHighlightEvent;
 import net.neoforged.neoforge.client.gui.ConfigurationScreen;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
@@ -39,6 +40,7 @@ public final class BlockCinemaClient {
         modEventBus.addListener(BlockCinemaClient::onRegisterRenderers);
         NeoForge.EVENT_BUS.addListener(BlockCinemaClient::onRightClickBlock);
         NeoForge.EVENT_BUS.addListener(BlockCinemaClient::onRightClickItem);
+        NeoForge.EVENT_BUS.addListener(BlockCinemaClient::onRenderBlockOutline);
         NeoForge.EVENT_BUS.addListener(BlockCinemaClient::onClientTick);
         NeoForge.EVENT_BUS.addListener(BlockCinemaClient::onLoggingOut);
     }
@@ -101,6 +103,14 @@ public final class BlockCinemaClient {
             openMenu(player, tv);
         } else {
             player.displayClientMessage(Component.translatable("message." + BlockCinema.MODID + ".remote_lost"), true);
+        }
+    }
+
+    /** No black selection box over a TV's picture when looking at it. */
+    private static void onRenderBlockOutline(RenderHighlightEvent.Block event) {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.level != null && minecraft.level.getBlockEntity(event.getTarget().getBlockPos()) instanceof TvBlockEntity) {
+            event.setCanceled(true);
         }
     }
 
