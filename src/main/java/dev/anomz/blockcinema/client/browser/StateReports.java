@@ -39,23 +39,24 @@ final class StateReports extends CefDisplayHandlerAdapter {
         return ERROR_CODE.matcher(code).matches() ? code : null;
     }
 
-    /** Time, length and paused from a report line, or null if it isn't one. */
+    /** Time, length, paused and loading from a report line, or null if it isn't one. */
     static double[] parse(String message) {
         if (!message.startsWith(PREFIX)) {
             return null;
         }
         String[] parts = message.substring(PREFIX.length()).split(" ");
-        if (parts.length != 3) {
+        if (parts.length != 4) {
             return null;
         }
         try {
             double time = Double.parseDouble(parts[0]);
             double length = Double.parseDouble(parts[1]);
             double paused = Double.parseDouble(parts[2]);
+            double loading = Double.parseDouble(parts[3]);
             if (!Double.isFinite(time) || !Double.isFinite(length) || time < 0 || length < 0) {
                 return null;
             }
-            return new double[] { time, length, paused };
+            return new double[] { time, length, paused, loading };
         } catch (NumberFormatException e) {
             return null;
         }
@@ -98,7 +99,7 @@ final class StateReports extends CefDisplayHandlerAdapter {
         if (report == null) {
             return false;
         }
-        Minecraft.getInstance().execute(() -> TvPlayers.report(browser, report[0], report[1], report[2] != 0));
+        Minecraft.getInstance().execute(() -> TvPlayers.report(browser, report[0], report[1], report[2] != 0, report[3] != 0));
         // Handled: keeps a line a second out of Chromium's log.
         return true;
     }

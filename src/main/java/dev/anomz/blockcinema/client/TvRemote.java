@@ -5,6 +5,7 @@ import java.util.List;
 import org.jetbrains.annotations.Nullable;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvClockFollower;
 import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.TvQueueEntry;
 import dev.anomz.blockcinema.TvService;
@@ -16,6 +17,7 @@ import dev.anomz.blockcinema.network.ControlTvPayload;
 import dev.anomz.blockcinema.network.QueueTvPayload;
 import dev.anomz.blockcinema.network.RotateTvPayload;
 import dev.anomz.blockcinema.network.VideoEndedPayload;
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -68,8 +70,9 @@ public final class TvRemote {
         Minecraft minecraft = Minecraft.getInstance();
         if (position != null && position.seekable()) {
             seek(origin, position.time() + seconds);
-        } else if (source != null && minecraft.level != null) {
-            seek(origin, source.position(minecraft.level.getGameTime()) + seconds);
+        } else if (position == null && source != null && minecraft.level != null) {
+            // Not reported yet; live streams (which report no length) have nowhere to jump to.
+            seek(origin, source.position(TvClockFollower.INSTANCE.now(minecraft.level.getGameTime(), Util.getMillis())) + seconds);
         }
     }
 

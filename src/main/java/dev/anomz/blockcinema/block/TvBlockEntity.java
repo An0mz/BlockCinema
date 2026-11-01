@@ -12,6 +12,7 @@ import java.util.WeakHashMap;
 import org.jetbrains.annotations.Nullable;
 
 import dev.anomz.blockcinema.BlockCinemaRegistries;
+import dev.anomz.blockcinema.TvClock;
 import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.TvQueueEntry;
 import dev.anomz.blockcinema.TvService;
@@ -96,7 +97,7 @@ public class TvBlockEntity extends BlockEntity {
     }
 
     /** Server side: plays the next queued video; false if the queue is empty (then nothing changes). */
-    public boolean playNext(long gameTime) {
+    public boolean playNext(long clockTicks) {
         if (queue.isEmpty()) {
             return false;
         }
@@ -106,7 +107,7 @@ public class TvBlockEntity extends BlockEntity {
                 history.removeLast();
             }
         }
-        source = queue.remove(0).start(gameTime);
+        source = queue.remove(0).start(clockTicks);
         sync();
         return true;
     }
@@ -115,18 +116,18 @@ public class TvBlockEntity extends BlockEntity {
      * Server side: plays what played before the current video, which goes back to the front of the queue.
      * With nothing before it, starts the current video over.
      */
-    public void playPrevious(long gameTime) {
+    public void playPrevious(long clockTicks) {
         if (source == null) {
             return;
         }
         if (history.isEmpty()) {
-            source = new TvSource(source.service(), source.page(), source.owner(), source.ownerName(), gameTime, 0, source.paused());
+            source = new TvSource(source.service(), source.page(), source.owner(), source.ownerName(), clockTicks, 0, source.paused());
         } else {
             if (queue.size() >= MAX_QUEUE) {
                 queue.remove(queue.size() - 1);
             }
             queue.add(0, entry(source));
-            source = history.pop().start(gameTime);
+            source = history.pop().start(clockTicks);
         }
         sync();
     }
@@ -187,21 +188,21 @@ public class TvBlockEntity extends BlockEntity {
                 powered = level.hasNeighborSignal(layout.cell(c, r));
             }
         }
-        origin.redstone(powered, level.getGameTime());
+        origin.redstone(powered, TvClock.now(level));
     }
 
-    private void redstone(boolean powered, long gameTime) {
+    private void redstone(boolean powered, long clockTicks) {
         if (powered == this.powered) {
             return;
         }
         this.powered = powered;
         if (powered && source != null && !source.paused()) {
             pausedByRedstone = true;
-            setSource(source.pausedAt(gameTime));
+            setSource(source.pausedAt(clockTicks));
         } else if (!powered && pausedByRedstone) {
             pausedByRedstone = false;
             if (source != null && source.paused()) {
-                setSource(source.resumedAt(gameTime));
+                setSource(source.resumedAt(clockTicks));
             }
         }
         setChanged();

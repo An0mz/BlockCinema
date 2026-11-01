@@ -5,6 +5,21 @@ and versions follow [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- Live YouTube streams and live `.m3u8` links no longer jump back to the start of the stream. They now play what is
+  on now, for everyone, and show the Live badge instead of a time bar that didn't work.
+- Videos no longer drift out of step on a lagging server: the shared time now runs in real time, not on server ticks.
+- A video slow to load (long ones especially) no longer jumps again and again while it is still loading.
+- Very long Jellyfin videos and `.m3u8` links no longer fill up the browser's memory, and recover from passing network
+  and decoder errors.
+- Pausing shows the same picture for everyone, and after a pause, a jump or looking away, TVs get back in step sooner.
+
+### Changed
+
+- Small differences between players are now played away by playing slightly faster or slower for a few seconds,
+  without a jump. Clients and servers must both update: this version adds a network message.
+
 ## [0.1.0] - 2026-10-23
 
 First release, for Minecraft 1.21.1 with NeoForge.

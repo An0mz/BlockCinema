@@ -41,10 +41,23 @@
   };
 
   // Where the video is, once a second, for the mod's time bar and resume (read from the browser console):
-  // "[blockcinema-state] <seconds> <length in seconds, 0 if live or unknown> <1 if paused>".
-  function report(time, length, paused) {
+  // "[blockcinema-state] <seconds> <length in seconds, 0 if live or unknown> <1 if paused> <1 if loading>".
+  function report(time, length, paused, loading) {
     console.log('[blockcinema-state] ' + (time || 0).toFixed(1) + ' ' + (isFinite(length) && length > 0 ? length.toFixed(1) : '0')
-        + ' ' + (paused ? 1 : 0));
+        + ' ' + (paused ? 1 : 0) + ' ' + (loading ? 1 : 0));
+  }
+
+  // A live .m3u8 has a length and times of its own that say nothing about the TV's shared time.
+  var hls = null;
+  var live = false;
+  function sendReport() {
+    report(video.currentTime, live ? 0 : video.duration, video.paused, video.seeking || (!video.paused && video.readyState < 3));
+  }
+
+  function goLive() {
+    if (hls && hls.liveSyncPosition !== null) {
+      video.currentTime = hls.liveSyncPosition;
+    }
   }
 
   // What went wrong, for the mod's messages ("none" when playing again):
@@ -63,11 +76,19 @@
     video.currentTime = Math.max(0, seconds);
   };
 
-  // Called by the mod to follow the TV's shared play/pause state.
+  // Called by the mod to play a little faster or slower for a while, to get back in step unnoticed.
+  window.blockcinemaRate = function (rate) {
+    video.playbackRate = rate;
+  };
+
+  // Called by the mod to follow the TV's shared play/pause state. A live stream goes on with what is on now.
   window.blockcinemaSetPaused = function (paused) {
     if (paused) {
       video.pause();
     } else {
+      if (live) {
+        goLive();
+      }
       video.play().catch(function () {});
     }
   };
@@ -75,6 +96,8 @@
   console.log('[blockcinema] video: H.264 ' + video.canPlayType('video/mp4; codecs="avc1.42E01E, mp4a.40.2"')
       + ', MSE H.264 ' + (window.MediaSource && MediaSource.isTypeSupported('video/mp4; codecs="avc1.42E01E,mp4a.40.2"')));
 
+  var MAX_RECOVERIES = 3;
+  var recoveries = 0;
   var url = null;
   try {
     url = new URL(src);
@@ -83,16 +106,42 @@
   if (!url || (url.protocol !== 'https:' && url.protocol !== 'http:')) {
     show('No video');
   } else if (/\.m3u8$/i.test(url.pathname) && window.Hls && Hls.isSupported()) {
-    var hls = new Hls({
+    hls = new Hls({
       startPosition: start > 0 ? start : -1,
+      // Keep only some of the video around: by default everything already played stays in memory, which a
+      // video of several hours fills up, and the browser then stutters and fails.
+      backBufferLength: 60,
+      maxBufferLength: 30,
+      maxMaxBufferLength: 60,
+      maxBufferSize: 60 * 1000 * 1000,
       xhrSetup: function (xhr, requestUrl) {
         if (auth && new URL(requestUrl).origin === url.origin) {
           xhr.setRequestHeader('Authorization', auth);
         }
       }
     });
+    // Just found out it's live: where it started (the TV's shared time) means nothing, so on to what is on now.
+    hls.on(Hls.Events.LEVEL_UPDATED, function (event, data) {
+      // An EVENT playlist only grows and its times stay the same, so it can be shared like a normal video.
+      var nowLive = data.details.live && data.details.type !== 'EVENT';
+      if (nowLive && !live && start > 0) {
+        goLive();
+      }
+      live = nowLive;
+    });
+    // A long video can hit a passing network or decoder problem some hours in; those are worth another try.
     hls.on(Hls.Events.ERROR, function (event, data) {
       if (data.fatal) {
+        if (recoveries < MAX_RECOVERIES && data.type === Hls.ErrorTypes.MEDIA_ERROR) {
+          recoveries++;
+          hls.recoverMediaError();
+          return;
+        }
+        if (recoveries < MAX_RECOVERIES && data.type === Hls.ErrorTypes.NETWORK_ERROR && hls.levels && hls.levels.length) {
+          recoveries++;
+          hls.startLoad();
+          return;
+        }
         show('Can\'t play this video (' + data.details + ')');
         reportError(data.type === Hls.ErrorTypes.NETWORK_ERROR ? 'network' : data.type === Hls.ErrorTypes.MEDIA_ERROR ? 'decode' : 'playback');
       }
@@ -107,15 +156,19 @@
       }
     }, { once: true });
   }
-  setInterval(function () {
-    report(video.currentTime, video.duration, video.paused);
-  }, 1000);
+  setInterval(sendReport, 1000);
+  // At once, so the mod doesn't go by a report from before a jump or a pause.
+  ['seeking', 'seeked', 'waiting', 'playing', 'pause'].forEach(function (name) {
+    video.addEventListener(name, sendReport);
+  });
   video.addEventListener('error', function () {
     show('Can\'t play this video' + (video.error ? ' (error ' + video.error.code + ')' : ''));
     var codes = { 2: 'network', 3: 'decode', 4: 'unsupported' };
     reportError((video.error && codes[video.error.code]) || 'playback');
   });
   video.addEventListener('playing', function () {
+    recoveries = 0;
+    document.getElementById('message').style.display = 'none';
     reportError('none');
   });
   video.addEventListener('ended', function () {

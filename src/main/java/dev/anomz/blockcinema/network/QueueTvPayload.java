@@ -1,6 +1,7 @@
 package dev.anomz.blockcinema.network;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvClock;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
@@ -50,9 +51,9 @@ public record QueueTvPayload(BlockPos origin, int action, int index) implements 
             return;
         }
         switch (payload.action()) {
-            case NEXT -> tv.playNext(player.level().getGameTime());
+            case NEXT -> tv.playNext(TvClock.now(player.level()));
             case REMOVE -> tv.removeQueued(payload.index());
-            case PREVIOUS -> tv.playPrevious(player.level().getGameTime());
+            case PREVIOUS -> tv.playPrevious(TvClock.now(player.level()));
             default -> {
             }
         }

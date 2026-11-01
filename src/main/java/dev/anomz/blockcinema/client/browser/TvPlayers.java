@@ -19,6 +19,7 @@ import com.cinemamod.mcef.MCEFBrowser;
 import com.cinemamod.mcef.MCEFClient;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvClockFollower;
 import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
@@ -67,6 +68,10 @@ public final class TvPlayers {
      * playing in a player the user can't see, so our YouTube page pauses until it is seen again.
      */
     private static final long OUT_OF_SIGHT_MILLIS = 3000;
+    /** A report this soon after a jump can be from before it (pages report once a second). */
+    private static final long REPORT_MILLIS = 1100;
+    /** A jump never goes further ahead than this to make up for loading. */
+    private static final double MAX_SEEK_LEAD_SECONDS = 10;
 
     private static final Long2ObjectMap<Playing> PLAYING = new Long2ObjectOpenHashMap<>();
     private static final WatchPositions POSITIONS =
@@ -92,8 +97,8 @@ public final class TvPlayers {
         TOO_MANY
     }
 
-    /** Where a video is: seconds in, its length (0 when live or not known yet) and whether it is paused. */
-    public record Position(double time, double length, boolean paused) {
+    /** Where a video is: seconds in, its length (0 when live or not known yet), whether it is paused and whether it is waiting to load. */
+    public record Position(double time, double length, boolean paused, boolean loading) {
         public boolean seekable() {
             return length > 0;
         }
@@ -131,6 +136,18 @@ public final class TvPlayers {
         /** The page's last report (see {@link StateReports}); null until the first one. */
         @Nullable
         Position position;
+        /** When {@link #position} came in; a playing video has moved on since. */
+        long positionMillis;
+        /** The playback speed the page was last told. */
+        double rate = 1;
+        /** Least time between catch-up jumps now (see {@link SyncPlan#nextSeekCooldown}). */
+        long seekCooldown = SyncPlan.SEEK_SYNC_MILLIS;
+        /** How long a jump takes to load here, in seconds, from the last ones. */
+        double seekLead;
+        /** When the jump still being waited for was sent; 0 when none. */
+        long seekSentMillis;
+        /** The page said it was loading since that jump. */
+        boolean seekLoaded;
         /** This TV's own volume, 0 to 1, set from its menu. */
         float userVolume = BlockCinemaClientConfig.startVolume();
         /** Volume from the sound settings and the player's distance (or full when watched fullscreen). */
@@ -155,7 +172,7 @@ public final class TvPlayers {
         void stopped() {
             Consumer<Position> run = onStop;
             onStop = NOTHING;
-            Position last = position != null ? position : new Position(0, 0, true);
+            Position last = position != null ? position : new Position(0, 0, true, false);
             if (resumeKey != null) {
                 POSITIONS.remember(resumeKey, last.time(), last.length());
             }
@@ -209,10 +226,12 @@ public final class TvPlayers {
     }
 
     /** A page's report, on the client thread (from {@link StateReports}). */
-    static void report(CefBrowser browser, double time, double length, boolean paused) {
+    static void report(CefBrowser browser, double time, double length, boolean paused, boolean loading) {
         for (Playing playing : PLAYING.values()) {
             if (playing.browser == browser) {
-                playing.position = new Position(time, length, paused);
+                playing.position = new Position(time, length, paused, loading);
+                playing.positionMillis = Util.getMillis();
+                playing.seekLoaded |= loading;
             }
         }
     }
@@ -322,6 +341,9 @@ public final class TvPlayers {
             TvPlayers.gamePaused = gamePaused;
             PLAYING.values().forEach(playing -> playing.lastPauseSyncMillis = 0);
         }
+        if (gamePaused) {
+            TvClockFollower.INSTANCE.hold(now);
+        }
         LongSet wanted = new LongOpenHashSet();
         HIDDEN.clear();
         if (ready()) {
@@ -427,6 +449,7 @@ public final class TvPlayers {
             long now, LongSet wanted) {
         BlockPos origin = tv.getBlockPos();
         String key = source.page();
+        long clockTicks = TvClockFollower.INSTANCE.now(level.getGameTime(), now);
         Playing playing = PLAYING.get(origin.asLong());
         if (playing == null || !playing.key.equals(key)) {
             String page = key;
@@ -449,7 +472,7 @@ public final class TvPlayers {
                 resumeKey = null;
                 onStop = stream.onStop();
             }
-            playing = start(origin, playing, withStart(page, source.position(level.getGameTime())), key, resumeKey, onStop);
+            playing = start(origin, playing, withStart(page, source.position(clockTicks)), key, resumeKey, onStop);
         }
         wanted.add(origin.asLong());
         boolean portrait = playing.fullscreen ? playing.verticalView : layout.portrait();
@@ -466,7 +489,7 @@ public final class TvPlayers {
             // A portrait screen gets a portrait browser: Shorts fill it.
             playing.browser.resize(portrait ? height : width, portrait ? width : height);
         }
-        syncState(playing, source, level.getGameTime(), now);
+        syncState(playing, source, clockTicks, now);
         updateVolume(playing, layout, player, now);
         updateCaptions(playing);
     }
@@ -514,11 +537,16 @@ public final class TvPlayers {
         playing.volume = -1;
         playing.lastSeenMillis = Util.getMillis();
         playing.lastSeekSyncMillis = Util.getMillis();
+        playing.positionMillis = 0;
+        playing.rate = 1;
+        playing.seekCooldown = SyncPlan.SEEK_SYNC_MILLIS;
+        playing.seekSentMillis = 0;
+        playing.seekLoaded = false;
         return playing;
     }
 
-    /** Pauses, resumes or jumps the page to match the shared state, gently (see {@link SyncPlan}). */
-    private static void syncState(Playing playing, TvSource source, long gameTime, long now) {
+    /** Pauses, resumes, jumps or speeds the page to match the shared state, gently (see {@link SyncPlan}). */
+    private static void syncState(Playing playing, TvSource source, long clockTicks, long now) {
         if (playing.synced == null) {
             playing.synced = source;
         } else if (!source.equals(playing.synced)) {
@@ -526,21 +554,53 @@ public final class TvPlayers {
             playing.synced = source;
             playing.lastPauseSyncMillis = 0;
             playing.lastSeekSyncMillis = 0;
+            playing.seekCooldown = SyncPlan.SEEK_SYNC_MILLIS;
         }
         Position position = playing.position;
         if (position == null) {
             return;
         }
-        SyncPlan plan = SyncPlan.of(source.paused(), gamePaused, playing.visible, source.position(gameTime), position.time(),
-                position.length(), position.paused(), now - playing.lastPauseSyncMillis, now - playing.lastSeekSyncMillis);
+        // The page reports once a second: a playing video has moved on since.
+        double time = position.time();
+        if (!position.paused() && !position.loading()) {
+            time += (now - playing.positionMillis) / 1000.0 * playing.rate;
+        }
+        double expected = source.position(clockTicks);
+        noteJumpLoaded(playing, position, expected - time, now);
+        SyncPlan plan = SyncPlan.of(new SyncPlan.Input(source.paused(), gamePaused, playing.visible, expected, time,
+                position.length(), position.paused(), position.loading(), playing.rate, now - playing.lastPauseSyncMillis,
+                now - playing.lastSeekSyncMillis, playing.seekCooldown, playing.seekLead));
         if (plan.setPaused() != null) {
             playing.lastPauseSyncMillis = now;
             run(playing, "window.blockcinemaSetPaused && blockcinemaSetPaused(" + plan.setPaused() + ")");
         }
         if (plan.seekTo() != null) {
             playing.lastSeekSyncMillis = now;
+            playing.seekSentMillis = now;
+            playing.seekLoaded = false;
             run(playing, String.format(Locale.ROOT, "window.blockcinemaSeek && blockcinemaSeek(%.1f)", plan.seekTo()));
         }
+        if (plan.setRate() != null) {
+            playing.rate = plan.setRate();
+            run(playing, String.format(Locale.ROOT, "window.blockcinemaRate && blockcinemaRate(%.2f)", plan.setRate()));
+        }
+    }
+
+    /**
+     * Once the last jump has loaded, learns from it: how long jumps take to load here, so the next lands
+     * in step, and whether it helped, so one that doesn't isn't repeated at once.
+     */
+    private static void noteJumpLoaded(Playing playing, Position position, double drift, long now) {
+        if (playing.seekSentMillis == 0 || position.loading() || playing.positionMillis < playing.seekSentMillis
+                || now - playing.seekSentMillis < REPORT_MILLIS) {
+            return;
+        }
+        if (!position.paused()) {
+            double loaded = playing.seekLoaded ? (playing.positionMillis - playing.seekSentMillis) / 1000.0 : 0;
+            playing.seekLead = Math.min((playing.seekLead + loaded) / 2, MAX_SEEK_LEAD_SECONDS);
+            playing.seekCooldown = SyncPlan.nextSeekCooldown(playing.seekCooldown, drift);
+        }
+        playing.seekSentMillis = 0;
     }
 
     private static void updateVolume(Playing playing, TvLayout layout, Player player, long now) {
@@ -574,6 +634,10 @@ public final class TvPlayers {
     }
 
     private static void sendState(Playing playing, float volume, boolean visible) {
+        if (visible && !playing.visible) {
+            // Seen again: back in step at once, not after the page has first started loading where it was.
+            playing.lastSeekSyncMillis = 0;
+        }
         playing.volume = volume;
         playing.visible = visible;
         playing.checksSinceStateSent = 0;

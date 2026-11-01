@@ -2,6 +2,7 @@ package dev.anomz.blockcinema.client;
 
 import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.BlockCinemaRegistries;
+import dev.anomz.blockcinema.TvClockFollower;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
@@ -63,6 +64,7 @@ public final class BlockCinemaClient {
 
     private static void onLoggingOut(ClientPlayerNetworkEvent.LoggingOut event) {
         TvPlayers.stopAll();
+        TvClockFollower.INSTANCE.reset();
     }
 
     private static void onRegisterRenderers(EntityRenderersEvent.RegisterRenderers event) {

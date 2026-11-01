@@ -1,6 +1,7 @@
 package dev.anomz.blockcinema.network;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvClock;
 import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
@@ -55,7 +56,7 @@ public record VideoEndedPayload(BlockPos origin, String page, int nextInList) im
         }
         TvBlockEntity tv = TvRequests.screen(player, payload.origin());
         TvSource source = tv == null ? null : tv.source();
-        long now = player.level().getGameTime();
+        long now = TvClock.now(player.level());
         if (source == null || !source.page().equals(payload.page()) || source.position(now) < MIN_SECONDS) {
             return;
         }

@@ -1,6 +1,7 @@
 package dev.anomz.blockcinema.network;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvClock;
 import dev.anomz.blockcinema.TvSource;
 import dev.anomz.blockcinema.block.TvBlockEntity;
 import io.netty.buffer.ByteBuf;
@@ -49,7 +50,7 @@ public record ControlTvPayload(BlockPos origin, int action, double seconds) impl
         if (source == null || !TvRequests.mayControl(player, source)) {
             return;
         }
-        long now = player.level().getGameTime();
+        long now = TvClock.now(player.level());
         switch (payload.action()) {
             case PAUSE -> tv.setSource(source.pausedAt(now));
             case RESUME -> tv.setSource(source.resumedAt(now));

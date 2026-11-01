@@ -13,9 +13,9 @@ import java.util.UUID;
 public record TvQueueEntry(TvService service, String page, String title, UUID owner, String ownerName) {
     public static final int MAX_TITLE_LENGTH = 100;
 
-    /** It playing now, from the start, at game tick {@code gameTime}. */
-    public TvSource start(long gameTime) {
-        return new TvSource(service, page, owner, ownerName, gameTime, 0, false);
+    /** It playing now, from the start, at clock tick {@code clockTicks} (see {@link TvClock}). */
+    public TvSource start(long clockTicks) {
+        return new TvSource(service, page, owner, ownerName, clockTicks, 0, false);
     }
 
     /** A title from a client made safe to show: no control characters, not too long. */

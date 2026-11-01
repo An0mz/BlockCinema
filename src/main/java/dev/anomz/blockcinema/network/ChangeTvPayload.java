@@ -1,6 +1,7 @@
 package dev.anomz.blockcinema.network;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvClock;
 import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.TvQueueEntry;
 import dev.anomz.blockcinema.TvServerConfig;
@@ -75,7 +76,7 @@ public record ChangeTvPayload(BlockPos origin, int service, String page, double 
             return;
         }
         tv.setSource(new TvSource(service, payload.page(), player.getUUID(),
-                player.getGameProfile().getName(), player.level().getGameTime(), TvRequests.seconds(payload.startSeconds()),
+                player.getGameProfile().getName(), TvClock.now(player.level()), TvRequests.seconds(payload.startSeconds()),
                 false));
     }
 

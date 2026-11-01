@@ -39,10 +39,59 @@
   };
 
   // Where the video is, once a second, for the mod's time bar and resume (read from the browser console):
-  // "[blockcinema-state] <seconds> <length in seconds, 0 if live or unknown> <1 if paused>".
-  function report(time, length, paused) {
+  // "[blockcinema-state] <seconds> <length in seconds, 0 if live or unknown> <1 if paused> <1 if loading>".
+  function report(time, length, paused, loading) {
     console.log('[blockcinema-state] ' + (time || 0).toFixed(1) + ' ' + (isFinite(length) && length > 0 ? length.toFixed(1) : '0')
-        + ' ' + (paused ? 1 : 0));
+        + ' ' + (paused ? 1 : 0) + ' ' + (loading ? 1 : 0));
+  }
+
+  // Whether this video is live now. A live stream's "length" is how long it has been on and its time counts
+  // from the stream's start, which says nothing about the TV's shared time. getVideoData isn't in the
+  // documented API, so a length that keeps growing (a normal video's never does) counts too.
+  var liveVideo = null;
+  var live = false;
+  var lastLength = 0;
+  var lengthGrowths = 0;
+  function checkLive() {
+    var data = player.getVideoData ? player.getVideoData() : null;
+    if (data && data.video_id !== liveVideo) {
+      liveVideo = data.video_id;
+      live = false;
+      lastLength = 0;
+      lengthGrowths = 0;
+    }
+    var length = player.getDuration();
+    if (lastLength > 0 && length > lastLength + 0.5) {
+      lengthGrowths++;
+    }
+    lastLength = length;
+    var nowLive = !!(data && data.isLive) || lengthGrowths >= 2;
+    // Just found out: where it started (the TV's shared time) means nothing, so on to what is on now.
+    if (nowLive && !live && (start > 0 || length - player.getCurrentTime() > 60)) {
+      goLive();
+    }
+    live = nowLive;
+  }
+
+  function goLive() {
+    player.seekTo(player.getDuration(), true);
+  }
+
+  // Goes on after a pause; a live stream goes on with what is on now, the same for everyone.
+  function resume() {
+    player.playVideo();
+    if (live) {
+      goLive();
+    }
+  }
+
+  var played = false;
+  function sendReport() {
+    checkLive();
+    var state = player.getPlayerState();
+    report(player.getCurrentTime(), live ? 0 : player.getDuration(),
+        state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING,
+        state === YT.PlayerState.BUFFERING || (!played && !wantPaused && visible));
   }
 
   // What went wrong, for the mod's messages ("none" when playing again):
@@ -63,6 +112,13 @@
     }
   };
 
+  // Called by the mod to play a little faster or slower for a while, to get back in step unnoticed.
+  window.blockcinemaRate = function (rate) {
+    if (ready && (player.getAvailablePlaybackRates() || []).indexOf(rate) >= 0) {
+      player.setPlaybackRate(rate);
+    }
+  };
+
   // Called by the mod to follow the TV's shared play/pause state. Out of sight, a resume waits until seen.
   var wantPaused = false;
   window.blockcinemaSetPaused = function (paused) {
@@ -74,7 +130,7 @@
       pausedOutOfSight = false;
       player.pauseVideo();
     } else if (visible) {
-      player.playVideo();
+      resume();
     } else {
       pausedOutOfSight = true;
     }
@@ -116,7 +172,7 @@
       pausedOutOfSight = true;
     } else if (visible && pausedOutOfSight && !wantPaused) {
       pausedOutOfSight = false;
-      player.playVideo();
+      resume();
     }
   }
 
@@ -144,6 +200,7 @@
         },
         onStateChange: function (event) {
           if (event.data === YT.PlayerState.PLAYING) {
+            played = true;
             reportError('none');
             applyCaptions();
           } else if (event.data === YT.PlayerState.ENDED) {
@@ -156,18 +213,22 @@
               reportEnded();
             }
           }
+          // At once, so the mod doesn't go by a report from before a jump or a pause.
+          if (ready) {
+            sendReport();
+          }
         },
         onReady: function (event) {
           ready = true;
           applyCaptions();
+          var listIndex = -1;
           setInterval(function () {
-            var state = player.getPlayerState();
-            if (list) {
+            if (list && player.getPlaylistIndex() !== listIndex) {
               // Where the playlist is, for the next and previous buttons: "[blockcinema-list] <index>".
-              console.log('[blockcinema-list] ' + player.getPlaylistIndex());
+              listIndex = player.getPlaylistIndex();
+              console.log('[blockcinema-list] ' + listIndex);
             }
-            report(player.getCurrentTime(), player.getDuration(),
-                state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING);
+            sendReport();
           }, 1000);
           event.target.setVolume(Math.round(volume * 100));
           if (visible && !wantPaused) {

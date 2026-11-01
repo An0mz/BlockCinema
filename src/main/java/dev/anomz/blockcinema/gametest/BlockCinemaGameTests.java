@@ -2,6 +2,7 @@ package dev.anomz.blockcinema.gametest;
 
 import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.BlockCinemaRegistries;
+import dev.anomz.blockcinema.TvClock;
 import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
@@ -97,7 +98,7 @@ public final class BlockCinemaGameTests {
         wall(helper, 2, 1);
         TvLayout layout = layoutAt(helper, new BlockPos(1, 1, 4));
         ServerPlayer player = viewer(helper);
-        long now = helper.getLevel().getGameTime();
+        long now = TvClock.now(helper.getLevel());
 
         ChangeTvPayload.apply(player, ChangeTvPayload.of(layout.origin(), TvService.YOUTUBE, YOUTUBE_A, 30));
         TvSource source = origin(helper, layout).source();
@@ -179,7 +180,7 @@ public final class BlockCinemaGameTests {
 
         next(player);
         QueueTvPayload.apply(player, new QueueTvPayload(layout.origin(), QueueTvPayload.PREVIOUS, 0));
-        helper.assertTrue(YOUTUBE_A.equals(tv.source().page()) && tv.source().position(helper.getLevel().getGameTime()) == 0,
+        helper.assertTrue(YOUTUBE_A.equals(tv.source().page()) && tv.source().position(TvClock.now(helper.getLevel())) == 0,
                 "with nothing before, previous starts over");
         helper.succeed();
     }
