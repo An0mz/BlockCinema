@@ -1,13 +1,8 @@
 package dev.anomz.blockcinema.client;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
-import java.nio.file.Files;
 import java.nio.file.Path;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
 import dev.anomz.blockcinema.BlockCinema;
 import net.neoforged.fml.loading.FMLPaths;
@@ -35,16 +30,8 @@ public final class Agreements {
 
     public static boolean youtube() {
         if (youtubeAgreed < 0) {
-            youtubeAgreed = 0;
-            Path file = file();
-            if (Files.isRegularFile(file)) {
-                try (Reader reader = Files.newBufferedReader(file)) {
-                    JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
-                    youtubeAgreed = json.has("youtube") ? json.get("youtube").getAsInt() : 0;
-                } catch (IOException | RuntimeException e) {
-                    BlockCinema.LOGGER.warn("Couldn't read the saved agreements", e);
-                }
-            }
+            youtubeAgreed = JsonFile.read(file(), "Couldn't read the saved agreements",
+                    json -> json.has("youtube") ? json.get("youtube").getAsInt() : 0).orElse(0);
         }
         return youtubeAgreed >= YOUTUBE_VERSION;
     }
@@ -53,14 +40,6 @@ public final class Agreements {
         youtubeAgreed = agreed ? YOUTUBE_VERSION : 0;
         JsonObject json = new JsonObject();
         json.addProperty("youtube", youtubeAgreed);
-        Path file = file();
-        try {
-            Files.createDirectories(file.getParent());
-            try (Writer writer = Files.newBufferedWriter(file)) {
-                writer.write(json.toString());
-            }
-        } catch (IOException e) {
-            BlockCinema.LOGGER.error("Couldn't save the agreements", e);
-        }
+        JsonFile.write(file(), json, "Couldn't save the agreements");
     }
 }

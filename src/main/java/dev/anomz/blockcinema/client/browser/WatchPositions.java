@@ -1,18 +1,12 @@
 package dev.anomz.blockcinema.client.browser;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
-import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.client.JsonFile;
 
 /**
  * Where the player stopped watching each video, so it resumes there next time. Kept on this computer in
@@ -67,28 +61,16 @@ public final class WatchPositions {
             return;
         }
         loaded = true;
-        if (!Files.isRegularFile(file)) {
-            return;
-        }
-        try (Reader reader = Files.newBufferedReader(file)) {
-            for (Map.Entry<String, JsonElement> entry : JsonParser.parseReader(reader).getAsJsonObject().entrySet()) {
-                positions.put(entry.getKey(), entry.getValue().getAsDouble());
-            }
-        } catch (IOException | RuntimeException e) {
-            BlockCinema.LOGGER.warn("Couldn't read the saved watch positions", e);
-        }
+        JsonFile.read(file, "Couldn't read the saved watch positions", json -> {
+            Map<String, Double> saved = new LinkedHashMap<>();
+            json.entrySet().forEach(entry -> saved.put(entry.getKey(), entry.getValue().getAsDouble()));
+            return saved;
+        }).ifPresent(positions::putAll);
     }
 
     private void save() {
         JsonObject json = new JsonObject();
         positions.forEach(json::addProperty);
-        try {
-            Files.createDirectories(file.getParent());
-            try (Writer writer = Files.newBufferedWriter(file)) {
-                writer.write(json.toString());
-            }
-        } catch (IOException e) {
-            BlockCinema.LOGGER.error("Couldn't save the watch positions", e);
-        }
+        JsonFile.write(file, json, "Couldn't save the watch positions");
     }
 }

@@ -55,8 +55,9 @@ public class TvBlockEntity extends BlockEntity {
 
     public TvLayout layout(long gameTime) {
         if (layout == null || gameTime - layoutCheckedAt >= LAYOUT_CHECK_INTERVAL || gameTime < layoutCheckedAt) {
+            long spread = layout == null ? Math.floorMod(worldPosition.hashCode(), LAYOUT_CHECK_INTERVAL) : 0;
             layout = TvLayout.of(level, worldPosition, getBlockState());
-            layoutCheckedAt = gameTime;
+            layoutCheckedAt = gameTime - spread;
         }
         return layout;
     }

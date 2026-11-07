@@ -1,5 +1,8 @@
 package dev.anomz.blockcinema.block;
 
+import java.util.Arrays;
+import java.util.stream.IntStream;
+
 import org.jetbrains.annotations.Nullable;
 
 import net.minecraft.core.Direction;
@@ -17,6 +20,10 @@ import net.minecraft.world.phys.Vec3;
  */
 public record ScreenFrame(Vec3i right, Vec3i top, Vec3 normal, int modelX, int modelY, boolean diagonal) {
     private static final double SQRT2 = Math.sqrt(2);
+    private static final ScreenFrame[] ORIENTED = Arrays.stream(FrontAndTop.values())
+            .map(ScreenFrame::oriented).toArray(ScreenFrame[]::new);
+    private static final ScreenFrame[] DIAGONAL = IntStream.range(0, 4)
+            .mapToObj(Direction::from2DDataValue).map(ScreenFrame::diagonalFacing).toArray(ScreenFrame[]::new);
 
     @Nullable
     public static ScreenFrame of(BlockState state) {
@@ -30,6 +37,18 @@ public record ScreenFrame(Vec3i right, Vec3i top, Vec3 normal, int modelX, int m
     }
 
     public static ScreenFrame of(FrontAndTop orientation) {
+        return ORIENTED[orientation.ordinal()];
+    }
+
+    /**
+     * A diagonal TV: {@code facing} turned 45 degrees clockwise is where the screen faces, so north
+     * faces north-east and the screen runs from the block's north-west corner to its south-east corner.
+     */
+    public static ScreenFrame diagonal(Direction facing) {
+        return DIAGONAL[facing.get2DDataValue()];
+    }
+
+    private static ScreenFrame oriented(FrontAndTop orientation) {
         Direction front = orientation.front();
         Direction top = orientation.top();
         Vec3i right = top.getNormal().cross(front.getNormal());
@@ -55,11 +74,7 @@ public record ScreenFrame(Vec3i right, Vec3i top, Vec3 normal, int modelX, int m
         return new ScreenFrame(right, top.getNormal(), Vec3.atLowerCornerOf(front.getNormal()), x, y, false);
     }
 
-    /**
-     * A diagonal TV: {@code facing} turned 45 degrees clockwise is where the screen faces, so north
-     * faces north-east and the screen runs from the block's north-west corner to its south-east corner.
-     */
-    public static ScreenFrame diagonal(Direction facing) {
+    private static ScreenFrame diagonalFacing(Direction facing) {
         Direction clockwise = facing.getClockWise();
         Vec3i right = facing.getNormal().offset(facing.getCounterClockWise().getNormal());
         Vec3 normal = Vec3.atLowerCornerOf(facing.getNormal().offset(clockwise.getNormal())).normalize();

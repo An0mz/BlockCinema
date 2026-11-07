@@ -3,6 +3,18 @@
 All notable changes to Block Cinema. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Screens made of many TVs spread their layout checks over several ticks instead of all running on the same one.
+
+### Fixed
+
+- The Jellyfin login, watch positions and agreements are saved through a temporary file, so a crash while saving can't
+  leave them damaged.
+- Failing to tell Jellyfin that a video started or stopped is now logged instead of being ignored.
+
 ## [0.1.1] - 2026-11-01
 
 ### Fixed

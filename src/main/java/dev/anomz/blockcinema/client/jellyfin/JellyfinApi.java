@@ -29,6 +29,8 @@ import net.neoforged.fml.ModList;
 public final class JellyfinApi {
     private static final String CLIENT = "Block Cinema";
     private static final String DEVICE = "Minecraft";
+    private static final int MAX_BITRATE = 20_000_000;
+    private static final JsonObject DEVICE_PROFILE = deviceProfile();
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(10))
             .followRedirects(HttpClient.Redirect.NORMAL)
@@ -159,10 +161,6 @@ public final class JellyfinApi {
                 + "&sortBy=SortName&fields=ProductionYear&enableUserData=true&limit=500").thenApply(JellyfinApi::items);
     }
 
-    /**
-     * Asks the server for an HLS stream of the item with H.264 video and AAC audio, which the TV's
-     * browser can play: Jellyfin copies streams that already fit and transcodes the rest.
-     */
     public CompletableFuture<Tracks> tracks(String userId, String itemId) {
         return get("/Items/" + encode(itemId) + "?userId=" + encode(userId)).thenApply(json -> {
             List<Track> audio = new ArrayList<>();
@@ -193,42 +191,20 @@ public final class JellyfinApi {
         return playback(userId, itemId, -1, -1);
     }
 
+    /**
+     * Asks the server for an HLS stream of the item with H.264 video and AAC audio, which the TV's
+     * browser can play: Jellyfin copies streams that already fit and transcodes the rest.
+     */
     public CompletableFuture<Playback> playback(String userId, String itemId, int audio, int subtitle) {
-        JsonObject profile = new JsonObject();
-        profile.addProperty("Name", CLIENT);
-        profile.addProperty("MaxStreamingBitrate", 20_000_000);
-        profile.add("DirectPlayProfiles", new JsonArray());
-        JsonObject hls = new JsonObject();
-        hls.addProperty("Type", "Video");
-        hls.addProperty("Container", "ts");
-        hls.addProperty("Protocol", "hls");
-        hls.addProperty("Context", "Streaming");
-        hls.addProperty("VideoCodec", "h264");
-        hls.addProperty("AudioCodec", "aac");
-        hls.addProperty("MaxAudioChannels", "2");
-        hls.addProperty("BreakOnNonKeyFrames", true);
-        JsonArray transcoding = new JsonArray();
-        transcoding.add(hls);
-        profile.add("TranscodingProfiles", transcoding);
-        // Subtitles are burned into the picture: it works for every subtitle format with our HLS stream.
-        JsonArray subtitleProfiles = new JsonArray();
-        for (String format : new String[] { "srt", "subrip", "ass", "ssa", "vtt", "webvtt", "pgs", "pgssub", "dvdsub", "dvbsub" }) {
-            JsonObject subtitleProfile = new JsonObject();
-            subtitleProfile.addProperty("Format", format);
-            subtitleProfile.addProperty("Method", "Encode");
-            subtitleProfiles.add(subtitleProfile);
-        }
-        profile.add("SubtitleProfiles", subtitleProfiles);
-
         JsonObject body = new JsonObject();
         body.addProperty("UserId", userId);
-        body.addProperty("MaxStreamingBitrate", 20_000_000);
+        body.addProperty("MaxStreamingBitrate", MAX_BITRATE);
         body.addProperty("EnableDirectPlay", false);
         body.addProperty("EnableDirectStream", false);
         body.addProperty("EnableTranscoding", true);
         body.addProperty("AllowVideoStreamCopy", true);
         body.addProperty("AllowAudioStreamCopy", true);
-        body.add("DeviceProfile", profile);
+        body.add("DeviceProfile", DEVICE_PROFILE);
         if (audio >= 0) {
             body.addProperty("AudioStreamIndex", audio);
         }
@@ -250,14 +226,50 @@ public final class JellyfinApi {
         });
     }
 
-    public CompletableFuture<Void> reportStarted(Playback playback) {
-        return post("/Sessions/Playing", playbackInfo(playback)).thenApply(json -> null);
+    public void reportStarted(Playback playback) {
+        report("/Sessions/Playing", playbackInfo(playback));
     }
 
-    public CompletableFuture<Void> reportStopped(Playback playback, double seconds) {
+    public void reportStopped(Playback playback, double seconds) {
         JsonObject info = playbackInfo(playback);
         info.addProperty("PositionTicks", (long) (seconds * TICKS_PER_SECOND));
-        return post("/Sessions/Playing/Stopped", info).thenApply(json -> null);
+        report("/Sessions/Playing/Stopped", info);
+    }
+
+    private void report(String path, JsonObject info) {
+        post(path, info).exceptionally(error -> {
+            BlockCinema.LOGGER.warn("Couldn't tell Jellyfin about the playback", error);
+            return null;
+        });
+    }
+
+    private static JsonObject deviceProfile() {
+        JsonObject hls = new JsonObject();
+        hls.addProperty("Type", "Video");
+        hls.addProperty("Container", "ts");
+        hls.addProperty("Protocol", "hls");
+        hls.addProperty("Context", "Streaming");
+        hls.addProperty("VideoCodec", "h264");
+        hls.addProperty("AudioCodec", "aac");
+        hls.addProperty("MaxAudioChannels", "2");
+        hls.addProperty("BreakOnNonKeyFrames", true);
+        JsonArray transcoding = new JsonArray();
+        transcoding.add(hls);
+        // Subtitles are burned into the picture: it works for every subtitle format with our HLS stream.
+        JsonArray subtitleProfiles = new JsonArray();
+        for (String format : new String[] { "srt", "subrip", "ass", "ssa", "vtt", "webvtt", "pgs", "pgssub", "dvdsub", "dvbsub" }) {
+            JsonObject subtitleProfile = new JsonObject();
+            subtitleProfile.addProperty("Format", format);
+            subtitleProfile.addProperty("Method", "Encode");
+            subtitleProfiles.add(subtitleProfile);
+        }
+        JsonObject profile = new JsonObject();
+        profile.addProperty("Name", CLIENT);
+        profile.addProperty("MaxStreamingBitrate", MAX_BITRATE);
+        profile.add("DirectPlayProfiles", new JsonArray());
+        profile.add("TranscodingProfiles", transcoding);
+        profile.add("SubtitleProfiles", subtitleProfiles);
+        return profile;
     }
 
     private static JsonObject playbackInfo(Playback playback) {

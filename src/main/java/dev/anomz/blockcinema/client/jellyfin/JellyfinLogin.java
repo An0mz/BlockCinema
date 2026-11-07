@@ -1,18 +1,14 @@
 package dev.anomz.blockcinema.client.jellyfin;
 
-import java.io.IOException;
-import java.io.Reader;
-import java.io.Writer;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
 import org.jetbrains.annotations.Nullable;
 
 import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.client.JsonFile;
 import net.neoforged.fml.loading.FMLPaths;
 
 /**
@@ -44,22 +40,14 @@ public record JellyfinLogin(String server, String serverId, String userId, Strin
 
     @Nullable
     private static JellyfinLogin load() {
-        Path file = file();
-        if (!Files.isRegularFile(file)) {
-            return null;
-        }
-        try (Reader reader = Files.newBufferedReader(file)) {
-            JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
+        return JsonFile.read(file(), "Couldn't read the Jellyfin login, log in again", json -> {
             if (!json.has("token")) {
                 return null;
             }
             String serverId = json.has("serverId") ? json.get("serverId").getAsString() : "";
             return new JellyfinLogin(json.get("server").getAsString(), serverId, json.get("userId").getAsString(),
                     json.get("userName").getAsString(), json.get("token").getAsString(), json.get("deviceId").getAsString());
-        } catch (IOException | RuntimeException e) {
-            BlockCinema.LOGGER.warn("Couldn't read the Jellyfin login, log in again", e);
-            return null;
-        }
+        }).orElse(null);
     }
 
     public void save() {
@@ -70,7 +58,7 @@ public record JellyfinLogin(String server, String serverId, String userId, Strin
         json.addProperty("userName", userName);
         json.addProperty("token", token);
         json.addProperty("deviceId", deviceId);
-        write(json);
+        JsonFile.write(file(), json, "Couldn't save the Jellyfin login");
         current = this;
         loaded = true;
     }
@@ -79,33 +67,13 @@ public record JellyfinLogin(String server, String serverId, String userId, Strin
     public static void forget() {
         JsonObject json = new JsonObject();
         savedDeviceId().ifPresent(id -> json.addProperty("deviceId", id));
-        write(json);
+        JsonFile.write(file(), json, "Couldn't save the Jellyfin login");
         current = null;
         loaded = true;
     }
 
     public static Optional<String> savedDeviceId() {
-        Path file = file();
-        if (!Files.isRegularFile(file)) {
-            return Optional.empty();
-        }
-        try (Reader reader = Files.newBufferedReader(file)) {
-            JsonObject json = JsonParser.parseReader(reader).getAsJsonObject();
-            return json.has("deviceId") ? Optional.of(json.get("deviceId").getAsString()) : Optional.empty();
-        } catch (IOException | RuntimeException e) {
-            return Optional.empty();
-        }
-    }
-
-    private static void write(JsonObject json) {
-        Path file = file();
-        try {
-            Files.createDirectories(file.getParent());
-            try (Writer writer = Files.newBufferedWriter(file)) {
-                writer.write(json.toString());
-            }
-        } catch (IOException e) {
-            BlockCinema.LOGGER.error("Couldn't save the Jellyfin login", e);
-        }
+        return JsonFile.read(file(), "Couldn't read the Jellyfin device ID",
+                json -> json.has("deviceId") ? json.get("deviceId").getAsString() : null);
     }
 }
