@@ -20,7 +20,6 @@ final class StateReports extends CefDisplayHandlerAdapter {
     static final String ENDED = "[blockcinema-ended]";
     static final String LIST_PREFIX = "[blockcinema-list] ";
 
-    /** The whole number after {@code prefix} (0 to 9999), or -1 if the message isn't that. */
     static int parseNumber(String message, String prefix) {
         if (!message.startsWith(prefix)) {
             return -1;
@@ -30,7 +29,6 @@ final class StateReports extends CefDisplayHandlerAdapter {
     }
     private static final Pattern ERROR_CODE = Pattern.compile("[a-z_]{1,20}");
 
-    /** The error code in an error line ("none" when playing again), or null if it isn't one. */
     static String parseError(String message) {
         if (!message.startsWith(ERROR_PREFIX)) {
             return null;
@@ -39,7 +37,6 @@ final class StateReports extends CefDisplayHandlerAdapter {
         return ERROR_CODE.matcher(code).matches() ? code : null;
     }
 
-    /** Time, length, paused and loading from a report line, or null if it isn't one. */
     static double[] parse(String message) {
         if (!message.startsWith(PREFIX)) {
             return null;

@@ -17,12 +17,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-/**
- * Client to server: "play this on the screen at {@code origin}, starting {@code startSeconds} in".
- * {@code page} is one of our page URLs, or for Jellyfin which video on which server (see {@code TvPageRules}).
- * With {@code queue}, it waits in the screen's queue instead (it plays now if nothing does); {@code title}
- * is what the queue shows for it.
- */
+/** Client to server: play {@code page} on the screen at {@code origin} from {@code startSeconds}, or add it to the queue. */
 public record ChangeTvPayload(BlockPos origin, int service, String page, double startSeconds, boolean queue, String title)
         implements CustomPacketPayload {
     public static final Type<ChangeTvPayload> TYPE =
@@ -49,14 +44,12 @@ public record ChangeTvPayload(BlockPos origin, int service, String page, double 
         return TYPE;
     }
 
-    /** Runs on the server thread. */
     public static void handle(ChangeTvPayload payload, IPayloadContext context) {
         if (context.player() instanceof ServerPlayer player) {
             apply(player, payload);
         }
     }
 
-    /** What the server does with it from {@code player} (also used by the game tests). */
     public static void apply(ServerPlayer player, ChangeTvPayload payload) {
         if (!TvRequests.rateLimitAllows(player)
                 || payload.service() < 0 || payload.service() >= TvService.values().length) {

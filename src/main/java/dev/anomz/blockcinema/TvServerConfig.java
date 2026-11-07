@@ -4,11 +4,7 @@ import java.util.List;
 
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-/**
- * Settings for server owners ({@code config/blockcinema-server.toml}; a world can override it in
- * {@code serverconfig/}). NeoForge syncs these to clients, so the TV menu shows the server's choices;
- * the server checks them again on every request.
- */
+/** Settings for server owners; NeoForge syncs them to clients, and the server checks them again on every request. */
 public final class TvServerConfig {
     private static final ModConfigSpec.Builder BUILDER = new ModConfigSpec.Builder();
 
@@ -41,7 +37,6 @@ public final class TvServerConfig {
     private TvServerConfig() {
     }
 
-    // Before a world loads the config is not there yet; default to the defaults.
     public static boolean enabled(TvService service) {
         if (!SPEC.isLoaded()) {
             return true;
@@ -54,7 +49,6 @@ public final class TvServerConfig {
         };
     }
 
-    /** Whether video links may come from {@code host}. */
     public static boolean linkHostAllowed(String host) {
         List<? extends String> hosts = SPEC.isLoaded() ? DIRECT_LINK_HOSTS.get() : List.of();
         return TvPageRules.hostAllowed(hosts, host);

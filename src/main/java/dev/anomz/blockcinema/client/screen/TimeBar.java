@@ -31,7 +31,6 @@ final class TimeBar extends UiSlider {
         refresh();
     }
 
-    /** "1:02:03", or "2:03" under an hour. */
     static String format(double seconds) {
         long total = (long) Math.max(0, seconds);
         long hours = total / 3600;
@@ -41,7 +40,6 @@ final class TimeBar extends UiSlider {
                 : String.format(Locale.ROOT, "%d:%02d", minutes, secs);
     }
 
-    /** Follows playback; call every tick. */
     void refresh() {
         if (dragging) {
             return;
@@ -52,14 +50,12 @@ final class TimeBar extends UiSlider {
         updateMessage();
     }
 
-    /** Shows {@code text} in place of the times for a moment. */
     void notice(Component text) {
         notice = text;
         noticeUntil = Util.getMillis() + NOTICE_MILLIS;
         updateMessage();
     }
 
-    /** The time under the knob (follows it while dragging), or -1 when not seekable. */
     double shownSeconds() {
         TvPlayers.Position position = TvPlayers.position(screen);
         return position != null && position.seekable() ? value * position.length() : -1;

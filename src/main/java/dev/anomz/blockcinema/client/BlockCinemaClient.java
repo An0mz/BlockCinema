@@ -30,14 +30,10 @@ import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 
-/**
- * Client entry point. Only constructed on the physical client, so every class under
- * {@code client} is reached from here and never from common code.
- */
+/** Client entry point, only constructed on the physical client so common code never reaches {@code client}. */
 @Mod(value = BlockCinema.MODID, dist = Dist.CLIENT)
 public final class BlockCinemaClient {
     public BlockCinemaClient(IEventBus modEventBus, ModContainer container) {
-        // Mods menu > Block Cinema > Config: the server settings, editable in singleplayer.
         container.registerConfig(ModConfig.Type.CLIENT, BlockCinemaClientConfig.SPEC);
         container.registerExtensionPoint(IConfigScreenFactory.class, ConfigurationScreen::new);
         modEventBus.addListener(BlockCinemaClient::onRegisterRenderers);
@@ -56,7 +52,6 @@ public final class BlockCinemaClient {
 
     private static void onClientTick(ClientTickEvent.Post event) {
         Minecraft minecraft = Minecraft.getInstance();
-        // Ten times a second: a pause or a jump someone makes shows quickly.
         if (minecraft.level != null && minecraft.player != null && ++ticks % 2 == 0) {
             TvPlayers.tick(minecraft.level, minecraft.player);
         }
@@ -88,7 +83,6 @@ public final class BlockCinemaClient {
         openMenu(player, tv);
     }
 
-    /** Right-clicking with a linked remote anywhere in range opens its TV's menu. */
     private static void onRightClickItem(PlayerInteractEvent.RightClickItem event) {
         Player player = event.getEntity();
         ItemStack remote = event.getItemStack();
@@ -111,7 +105,6 @@ public final class BlockCinemaClient {
         }
     }
 
-    /** No black selection box over a TV's picture when looking at it. */
     private static void onRenderBlockOutline(RenderHighlightEvent.Block event) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.level != null && minecraft.level.getBlockEntity(event.getTarget().getBlockPos()) instanceof TvBlockEntity) {

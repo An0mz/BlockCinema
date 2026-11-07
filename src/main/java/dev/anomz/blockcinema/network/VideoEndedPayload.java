@@ -16,9 +16,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 /**
- * Client to server, sent by the game itself: the video {@code page} on the screen at {@code origin} ended
- * here, so the playlist's video {@code nextInList} (or with -1, the next queued one) can start. Every
- * viewer sends it; the first one for the video playing now counts, and the others no longer match.
+ * Client to server: the video {@code page} on the screen at {@code origin} ended, so the next one can start.
+ * Every viewer sends it; the first one for the video playing now counts.
  */
 public record VideoEndedPayload(BlockPos origin, String page, int nextInList) implements CustomPacketPayload {
     /** An "ended" this soon after a video started is ignored (a page that failed at once, or a hacked client). */
@@ -32,7 +31,6 @@ public record VideoEndedPayload(BlockPos origin, String page, int nextInList) im
             ByteBufCodecs.VAR_INT, VideoEndedPayload::nextInList,
             VideoEndedPayload::new);
 
-    /** A video (or a playlist's last one) ended: the queue goes on. */
     public VideoEndedPayload(BlockPos origin, String page) {
         this(origin, page, -1);
     }
@@ -42,14 +40,12 @@ public record VideoEndedPayload(BlockPos origin, String page, int nextInList) im
         return TYPE;
     }
 
-    /** Runs on the server thread. */
     public static void handle(VideoEndedPayload payload, IPayloadContext context) {
         if (context.player() instanceof ServerPlayer player) {
             apply(player, payload);
         }
     }
 
-    /** What the server does with it from {@code player} (also used by the game tests). */
     public static void apply(ServerPlayer player, VideoEndedPayload payload) {
         if (!TvRequests.rateLimitAllows(player)) {
             return;
@@ -62,7 +58,6 @@ public record VideoEndedPayload(BlockPos origin, String page, int nextInList) im
         }
         String list = source.service() == TvService.YOUTUBE ? TvPageRules.youtubeList(source.page()) : null;
         if (list != null && payload.nextInList() >= 0 && payload.nextInList() <= TvPageRules.MAX_LIST_INDEX) {
-            // The playlist's next video, for everyone together.
             tv.setSource(new TvSource(source.service(), TvPageRules.youtubeListPage(list, payload.nextInList()), source.owner(),
                     source.ownerName(), now, 0, false));
         } else {

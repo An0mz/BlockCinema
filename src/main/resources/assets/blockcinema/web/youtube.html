@@ -16,13 +16,10 @@
   var params = new URLSearchParams(location.search);
   var video = /^[A-Za-z0-9_-]{11}$/.test(params.get('v') || '') ? params.get('v') : null;
   var list = /^[A-Za-z0-9_-]{2,64}$/.test(params.get('list') || '') ? params.get('list') : null;
-  // Where to start in the playlist, from 0.
   var index = /^\d{1,4}$/.test(params.get('index') || '') ? Number(params.get('index')) : 0;
-  // Where to start, in seconds (resuming), passed in the fragment.
   var start = Math.floor(Number(new URLSearchParams(location.hash.slice(1)).get('start')) || 0);
   var player;
   var ready = false;
-  // Silent until the mod says how loud (it knows how far away the player is).
   var volume = 0;
   var visible = true;
   var pausedOutOfSight = false;
@@ -38,8 +35,6 @@
     }
   };
 
-  // Where the video is, once a second, for the mod's time bar and resume (read from the browser console):
-  // "[blockcinema-state] <seconds> <length in seconds, 0 if live or unknown> <1 if paused> <1 if loading>".
   function report(time, length, paused, loading) {
     console.log('[blockcinema-state] ' + (time || 0).toFixed(1) + ' ' + (isFinite(length) && length > 0 ? length.toFixed(1) : '0')
         + ' ' + (paused ? 1 : 0) + ' ' + (loading ? 1 : 0));
@@ -94,25 +89,20 @@
         state === YT.PlayerState.BUFFERING || (!played && !wantPaused && visible));
   }
 
-  // What went wrong, for the mod's messages ("none" when playing again):
-  // "[blockcinema-error] <code>".
   function reportError(code) {
     console.log('[blockcinema-error] ' + code);
   }
 
-  // The video ended, so the screen's queue can go on: "[blockcinema-ended]".
   function reportEnded() {
     console.log('[blockcinema-ended]');
   }
 
-  // Called by the mod to jump to a time, in seconds.
   window.blockcinemaSeek = function (seconds) {
     if (ready) {
       player.seekTo(Math.max(0, seconds), true);
     }
   };
 
-  // Called by the mod to play a little faster or slower for a while, to get back in step unnoticed.
   window.blockcinemaRate = function (rate) {
     if (ready && (player.getAvailablePlaybackRates() || []).indexOf(rate) >= 0) {
       player.setPlaybackRate(rate);

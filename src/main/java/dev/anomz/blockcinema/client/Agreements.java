@@ -13,9 +13,8 @@ import dev.anomz.blockcinema.BlockCinema;
 import net.neoforged.fml.loading.FMLPaths;
 
 /**
- * Whether this player agreed to YouTube's terms, the Google Privacy Policy and Block Cinema's privacy
- * policy, which YouTube's developer policies require before YouTube plays. Kept in
- * {@code config/blockcinema/agreements.json} on this computer. Client thread only.
+ * Whether this player agreed to YouTube's terms and the privacy policies that YouTube's developer policies
+ * require. Kept in {@code config/blockcinema/agreements.json}. Client thread only.
  */
 public final class Agreements {
     /** Raise when what players agree to for YouTube changes, so everyone is asked again. */
@@ -50,7 +49,6 @@ public final class Agreements {
         return youtubeAgreed >= YOUTUBE_VERSION;
     }
 
-    /** Agrees ({@code true}) or withdraws the agreement ({@code false}). */
     public static void setYoutube(boolean agreed) {
         youtubeAgreed = agreed ? YOUTUBE_VERSION : 0;
         JsonObject json = new JsonObject();

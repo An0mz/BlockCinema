@@ -18,7 +18,6 @@ public abstract class PanelScreen extends Screen {
     protected int panelY;
     protected int panelW;
     protected int panelH;
-    /** Grey line under the title. */
     protected Component subtitle = Component.empty();
 
     protected PanelScreen(Component title, @Nullable Screen parent) {
@@ -33,7 +32,6 @@ public abstract class PanelScreen extends Screen {
     /** Adds the widgets below the header; {@link #contentTop()} is where they start. */
     protected abstract void initContent();
 
-    /** Whether the header has a back arrow (to {@link #parent}). */
     protected boolean hasBack() {
         return parent != null;
     }

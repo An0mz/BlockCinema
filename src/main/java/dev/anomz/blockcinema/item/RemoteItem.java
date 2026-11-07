@@ -31,7 +31,6 @@ public class RemoteItem extends Item {
         super(properties);
     }
 
-    /** The TV this remote is linked to (any TV of its screen), or null. */
     @Nullable
     public static GlobalPos link(ItemStack remote) {
         return remote.get(BlockCinemaRegistries.REMOTE_LINK);

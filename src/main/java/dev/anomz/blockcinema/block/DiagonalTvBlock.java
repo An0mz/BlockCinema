@@ -30,7 +30,6 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  */
 public class DiagonalTvBlock extends BaseEntityBlock {
     public static final MapCodec<DiagonalTvBlock> CODEC = simpleCodec(DiagonalTvBlock::new);
-    /** Steps along the diagonal, roughly following the thin screen, for clicking and walking into. */
     private static final VoxelShape NORTH_WEST_TO_SOUTH_EAST = Shapes.or(
             box(0, 0, 0, 5, 16, 5), box(4, 0, 4, 9, 16, 9), box(8, 0, 8, 13, 16, 13), box(12, 0, 12, 16, 16, 16));
     private static final VoxelShape NORTH_EAST_TO_SOUTH_WEST = Shapes.or(
@@ -53,7 +52,6 @@ public class DiagonalTvBlock extends BaseEntityBlock {
         builder.add(HorizontalDirectionalBlock.FACING, TvBlock.UP, TvBlock.DOWN, TvBlock.LEFT, TvBlock.RIGHT);
     }
 
-    /** Faces whichever of the four diagonals points most toward the player. */
     @Override
     public BlockState getStateForPlacement(BlockPlaceContext context) {
         Vec3 look = context.getPlayer() != null ? context.getPlayer().getLookAngle() : new Vec3(0, 0, 1);
@@ -120,7 +118,6 @@ public class DiagonalTvBlock extends BaseEntityBlock {
         return state.rotate(mirror.getRotation(state.getValue(HorizontalDirectionalBlock.FACING)));
     }
 
-    /** A redstone signal pauses the screen (see {@link TvBlockEntity#checkRedstone}). */
     @Override
     protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos,
             boolean movedByPiston) {

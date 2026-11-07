@@ -43,7 +43,6 @@ public final class TvScreen extends PanelScreen {
     private static final int QUEUE_ROWS = 3;
     private static final int QUEUE_ROW_H = 14;
 
-    /** The screen's origin; it moves when a floor or ceiling screen is turned. */
     private BlockPos screen;
     private TimeBar timeBar;
     private VolumeSlider volume;
@@ -58,7 +57,6 @@ public final class TvScreen extends PanelScreen {
     private int statusY;
     private Component status = Component.empty();
 
-    /** {@code screen} is the origin of the clicked TV's screen (see {@code TvLayout}). */
     public TvScreen(BlockPos screen) {
         super(Component.translatable(key("tv")), null);
         this.screen = screen;
@@ -79,12 +77,10 @@ public final class TvScreen extends PanelScreen {
         return Ui.HEADER + Ui.PAD + (on ? CARD_H + 12 : 0) + queueHeight() + 14 + tilesHeight() + 8 + 14 + Ui.PAD;
     }
 
-    /** The services this player wants in the menu (Player Settings), in order. */
     private static List<TvService> shownServices() {
         return Arrays.stream(TvService.values()).filter(BlockCinemaClientConfig::shows).toList();
     }
 
-    /** Two tiles a row; with none, a line saying they're all hidden. */
     private int tilesHeight() {
         int rows = (shownServices().size() + 1) / 2;
         return rows == 0 ? font.lineHeight : rows * TILE_H + (rows - 1) * GAP;
@@ -96,7 +92,6 @@ public final class TvScreen extends PanelScreen {
         builtOn = source != null;
         subtitle = source == null ? Component.translatable(key("off"))
                 : Component.translatable(key("now_playing"), Component.translatable(source.service().translationKey()), source.ownerName());
-        // Header buttons, right to left after close: rotate (floor and ceiling screens), watch in the world.
         int iconSize = 18;
         int headerX = panelX + panelW - Ui.PAD - iconSize + 4;
         int headerY = panelY + (Ui.HEADER - iconSize) / 2;
@@ -132,11 +127,9 @@ public final class TvScreen extends PanelScreen {
         for (int i = 0; i < services.size(); i++) {
             TvService service = services.get(i);
             boolean enabled = TvServerConfig.enabled(service);
-            // An odd last tile takes the whole row.
             int width = i == services.size() - 1 && i % 2 == 0 ? w : tileW;
             ServiceTile tile = addRenderableWidget(new ServiceTile(x + i % 2 * (tileW + GAP), y + i / 2 * (TILE_H + GAP), width, TILE_H,
                     icon(service), Component.translatable(service.translationKey()),
-                    // The server's settings (synced to this client); the server checks them again.
                     Component.translatable(enabled ? key("tile." + service.id()) : key("service_disabled")), () -> open(service)));
             tile.active = enabled;
         }
@@ -158,7 +151,6 @@ public final class TvScreen extends PanelScreen {
         return rows == 0 ? 0 : 14 + rows * QUEUE_ROW_H + (queue().size() > QUEUE_ROWS ? QUEUE_ROW_H : 0) + 8;
     }
 
-    /** "Up next": the first queued videos with a remove button each, and skip to the next one. */
     private void addQueue(int x, int y, int w) {
         Component skip = Component.translatable(key("skip_to_next"));
         int skipW = font.width(skip) + 12;
@@ -179,7 +171,6 @@ public final class TvScreen extends PanelScreen {
         };
     }
 
-    /** The "now playing" card: seek bar and times, then skip, play/pause, volume, fullscreen and power. */
     private void addControls(int x, int y, int w) {
         timeBar = addRenderableWidget(new TimeBar(x + 6, y + 8, w - 12, screen));
         int rowY = y + 38;
@@ -199,7 +190,6 @@ public final class TvScreen extends PanelScreen {
                 Component.translatable(key("next_video")), IconButton.Style.GHOST, () -> skipVideo(1)));
         IconButton fullscreen = addRenderableWidget(new IconButton(x + w - 6 - 20 - 4 - 20, rowY + 2, 20, Icon.FULLSCREEN,
                 Component.translatable(key("fullscreen")), IconButton.Style.GHOST, () -> minecraft.setScreen(new TvFullscreenScreen(this, screen))));
-        // Someone else's Jellyfin has no picture here.
         fullscreen.active = TvPlayers.isPlaying(screen);
         addRenderableWidget(new IconButton(x + w - 6 - 20, rowY + 2, 20, Icon.POWER,
                 Component.translatable(key("turn_off")), IconButton.Style.DANGER, () -> {
@@ -208,7 +198,6 @@ public final class TvScreen extends PanelScreen {
                 }));
     }
 
-    /** Whether this is a floor or ceiling screen, whose picture can be turned. */
     private boolean lyingFlat() {
         BlockState state = minecraft.level == null ? null : minecraft.level.getBlockState(screen);
         return state != null && state.getBlock() instanceof TvBlock
@@ -246,7 +235,6 @@ public final class TvScreen extends PanelScreen {
             minecraft.setScreen(new AgreementScreen(this, () -> minecraft.setScreen(this)));
             return;
         }
-        // Turned: the screen's origin is another corner now.
         if (minecraft.level != null && minecraft.level.getBlockEntity(screen) instanceof TvBlockEntity tv) {
             TvLayout layout = tv.layout(minecraft.level.getGameTime());
             if (!layout.invalid() && !layout.origin().equals(screen)) {
@@ -306,7 +294,6 @@ public final class TvScreen extends PanelScreen {
             int timeY = cardY + 23;
             TvPlayers.Position position = TvPlayers.position(screen);
             if (position != null && !position.seekable()) {
-                // Live: a small badge instead of times.
                 Component live = Component.translatable(key("live"));
                 Ui.round(g, x + 9, timeY - 2, font.width(live) + 8, font.lineHeight + 3, Ui.ACCENT);
                 g.drawString(font, live, x + 13, timeY, 0xFFFFFFFF, false);

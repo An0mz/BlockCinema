@@ -11,11 +11,8 @@ import net.minecraft.network.chat.Component;
 /** A square button showing just an icon; its name shows as a tooltip and is read by the narrator. */
 public class IconButton extends AbstractButton {
     public enum Style {
-        /** Only shows a background when hovered. */
         GHOST,
-        /** Filled with the accent color, for the main action (play/pause). */
         PRIMARY,
-        /** Like ghost, turning red when hovered (turn off). */
         DANGER
     }
 

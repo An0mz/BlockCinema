@@ -32,10 +32,8 @@ import net.minecraft.world.phys.Vec3;
 /**
  * Draws this TV's slice of its screen's picture, letterboxed inside the bezel around the whole screen.
  * Every TV of a screen computes the same picture rectangle and draws only the part over itself.
- * The picture is the screen's browser, or the test pattern while nothing is playing.
  */
 public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
-    /** Frame around the whole screen, matching the bezel in the TV texture. */
     private static final float BEZEL = 1 / 16f;
     /**
      * How far the picture floats in front of the TV face, in blocks per block of distance to the camera.
@@ -68,7 +66,6 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         float gap = Math.clamp((float) Math.sqrt(layout.origin().distToCenterSqr(camera)) * GAP_PER_DISTANCE,
                 MIN_GAP, MAX_GAP);
         float front = (float) -frame.frontDistance() - gap;
-        // One TV is a cell this wide (a diagonal TV is wider than a block).
         float cell = (float) frame.cellWidth();
 
         // Picture rectangle in screen coordinates (blocks; x from the viewer's left, y up), letterboxed.
@@ -76,14 +73,12 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         float areaW = screenW - 2 * BEZEL;
         float areaH = layout.rows() - 2 * BEZEL;
         ResourceLocation picture = TvPlayers.texture(layout.origin());
-        // Browsers are 16:9, or 9:16 on screens taller than wide; the test pattern is 16:9.
         float aspect = picture != null && TvPlayers.portrait(layout.origin()) ? 9 / 16f : 16 / 9f;
         float picW = Math.min(areaW, areaH * aspect);
         float picH = picW / aspect;
         float picX0 = (screenW - picW) / 2;
         float picY0 = (layout.rows() - picH) / 2;
 
-        // The part of the picture over this TV's cell.
         float cellX0 = layout.col() * cell;
         float x0 = Math.max(picX0, cellX0);
         float x1 = Math.min(picX0 + picW, cellX0 + cell);
@@ -119,11 +114,7 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         poseStack.popPose();
     }
 
-    /**
-     * A TV playing something this player can't see says what and why: Jellyfin without a login on that
-     * server, no access or still loading, or YouTube before agreeing to its terms. Drawn once, by the
-     * screen's origin TV (this one, bottom-left), centered on the whole screen.
-     */
+    /** A TV playing something this player can't see says what and why, once, centered on the whole screen. */
     private static void drawCard(TvBlockEntity origin, TvLayout layout, PoseStack poseStack, MultiBufferSource buffers,
             float picW, float screenW, float cell, float front) {
         TvSource source = origin.source();
@@ -139,7 +130,6 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
             text = Component.translatable(source.service().translationKey());
             why = "error." + TvPlayers.error(origin.getBlockPos());
         } else if (hidden != null) {
-            // This player's own settings keep it from playing here.
             text = Component.translatable(source.service().translationKey());
             why = "hidden." + hidden.name().toLowerCase(Locale.ROOT);
         } else if (source.service() == TvService.JELLYFIN) {
@@ -158,7 +148,6 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         int width = Math.max(font.width(text), font.width(hint));
         float scale = Math.min(picW * 0.8f / Math.max(1, width), 1 / 32f);
         poseStack.pushPose();
-        // The middle of the screen, as seen from the origin cell; x runs to the viewer's left here.
         poseStack.translate(cell / 2 - screenW / 2, layout.rows() / 2f - 0.5f, front - 0.005f);
         // Font space has x to the right and y down: turn it to face the viewer.
         poseStack.scale(-scale, -scale, scale);
@@ -169,14 +158,12 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
         poseStack.popPose();
     }
 
-    /** Whether the screen's own video page (links and Jellyfin) reported an error. */
     private static boolean ownPageError(TvBlockEntity origin) {
         TvSource source = origin.source();
         return source != null && (source.service() == TvService.DIRECT_LINK || source.service() == TvService.JELLYFIN)
                 && TvPlayers.error(origin.getBlockPos()) != null;
     }
 
-    /** Whether the camera is on the screen side of this TV's screen. */
     private static boolean inFront(TvBlockEntity tv, ScreenFrame frame, Vec3 camera) {
         return camera.subtract(Vec3.atCenterOf(tv.getBlockPos())).dot(frame.normal()) > frame.frontDistance();
     }

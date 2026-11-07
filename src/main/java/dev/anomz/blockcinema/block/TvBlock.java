@@ -22,12 +22,8 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
 
 /**
- * A TV on a wall, floor or ceiling. Its orientation is which way the screen faces and where the top of
- * the picture is (for walls always up; on floors and ceilings the way the placing player faced). TVs
- * lying the same way in a filled rectangle act as one big screen (see {@link TvLayout}). The connection
- * properties hide the bezel on sides where another TV continues the screen, so walls of TVs look
- * seamless; up, down, left and right are as seen on the picture. The picture is drawn on the client by
- * the block entity renderer.
+ * A TV on a wall, floor or ceiling. TVs lying the same way in a filled rectangle act as one big screen
+ * (see {@link TvLayout}); the connection properties hide the bezel between them.
  */
 public class TvBlock extends BaseEntityBlock {
     public static final MapCodec<TvBlock> CODEC = simpleCodec(TvBlock::new);
@@ -81,7 +77,6 @@ public class TvBlock extends BaseEntityBlock {
         return connect(state, level, pos);
     }
 
-    /** Sets the connection properties from which neighbors continue the screen. */
     public static BlockState connect(BlockState state, BlockGetter level, BlockPos pos) {
         ScreenFrame frame = ScreenFrame.of(state);
         if (frame == null) {
@@ -112,7 +107,6 @@ public class TvBlock extends BaseEntityBlock {
                 mirror.rotation().rotate(state.getValue(BlockStateProperties.ORIENTATION)));
     }
 
-    /** A redstone signal pauses the screen (see {@link TvBlockEntity#checkRedstone}). */
     @Override
     protected void neighborChanged(BlockState state, Level level, BlockPos pos, Block neighborBlock, BlockPos neighborPos,
             boolean movedByPiston) {

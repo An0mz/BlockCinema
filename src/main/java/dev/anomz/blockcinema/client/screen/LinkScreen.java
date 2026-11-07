@@ -67,7 +67,6 @@ public final class LinkScreen extends PanelScreen {
         addRenderableWidget(new TextButton(x + w - 80, buttonY, 80, 20, Component.translatable(key("play")), true, this::play));
         int cancelX = x + w - 80 - 6 - 70;
         if (TvRemote.source(screen) != null) {
-            // Something plays already: this can wait its turn instead (Cancel moves to the left).
             int queueW = 90;
             addRenderableWidget(new TextButton(x + w - 80 - 6 - queueW, buttonY, queueW, 20, Component.translatable(key("add_to_queue")),
                     false, this::enqueue));
@@ -98,7 +97,6 @@ public final class LinkScreen extends PanelScreen {
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        // Enter plays, like the Play button.
         if ((keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) && link.isFocused()) {
             play();
             return true;

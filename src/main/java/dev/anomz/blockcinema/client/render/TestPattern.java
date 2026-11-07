@@ -13,7 +13,6 @@ public final class TestPattern {
     public static final int HEIGHT = 180;
     private static final ResourceLocation ID = ResourceLocation.fromNamespaceAndPath(BlockCinema.MODID, "test_pattern");
 
-    // 75% colour bars, then the reversed strip and the dark bottom strip (0xRRGGBB).
     private static final int[] TOP_BARS = { 0xBFBFBF, 0xBFBF00, 0x00BFBF, 0x00BF00, 0xBF00BF, 0xBF0000, 0x0000BF };
     private static final int[] MIDDLE_BARS = { 0x0000BF, 0x131313, 0xBF00BF, 0x131313, 0x00BFBF, 0x131313, 0xBFBFBF };
     private static final int[] BOTTOM_BARS = { 0x00214C, 0xFFFFFF, 0x32006A, 0x131313, 0x090909, 0x131313, 0x1D1D1D };
@@ -23,7 +22,6 @@ public final class TestPattern {
     private TestPattern() {
     }
 
-    /** The pattern's texture, made on the render thread the first time it is needed. */
     public static ResourceLocation texture() {
         if (texture == null) {
             Minecraft.getInstance().getTextureManager().register(ID, new DynamicTexture(draw()));

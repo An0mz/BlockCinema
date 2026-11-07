@@ -20,7 +20,6 @@ import dev.anomz.blockcinema.BlockCinema;
  * link the player typed). Jellyfin keeps its own positions on the server instead.
  */
 public final class WatchPositions {
-    /** The oldest entries are forgotten beyond this many. */
     static final int MAX_ENTRIES = 500;
     /** Stopping this close to the start doesn't count as watching. */
     static final double MIN_SECONDS = 10;
@@ -40,14 +39,12 @@ public final class WatchPositions {
         this.file = file;
     }
 
-    /** Seconds to resume {@code key} at, or 0. */
     double get(String key) {
         load();
         Double seconds = positions.get(key);
         return seconds == null ? 0 : seconds;
     }
 
-    /** Stopped at {@code time} of a video {@code length} seconds long (0 when live or unknown). */
     void remember(String key, double time, double length) {
         if (length <= 0) {
             return;

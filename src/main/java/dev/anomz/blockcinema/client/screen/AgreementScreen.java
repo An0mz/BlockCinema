@@ -27,7 +27,6 @@ public final class AgreementScreen extends PanelScreen {
     private final Runnable onAgree;
     private List<FormattedCharSequence> lines = List.of();
 
-    /** {@code onAgree} runs once the player agrees (null: just close). */
     public AgreementScreen(@Nullable Screen parent, @Nullable Runnable onAgree) {
         super(Component.translatable(key("title")), parent);
         this.onAgree = onAgree;

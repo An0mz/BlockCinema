@@ -41,7 +41,6 @@ public final class BlockCinemaGameTests {
     private BlockCinemaGameTests() {
     }
 
-    /** TVs facing north in a {@code cols} by {@code rows} wall, from (1, 1, 4) going east and up. */
     private static void wall(GameTestHelper helper, int cols, int rows) {
         BlockState tv = BlockCinemaRegistries.TV.get().defaultBlockState()
                 .setValue(BlockStateProperties.ORIENTATION, FrontAndTop.NORTH_UP);
@@ -61,7 +60,6 @@ public final class BlockCinemaGameTests {
         return (TvBlockEntity) helper.getLevel().getBlockEntity(layout.origin());
     }
 
-    /** A player standing in front of the screen. */
     private static ServerPlayer viewer(GameTestHelper helper) {
         ServerPlayer player = helper.makeMockServerPlayerInLevel();
         Vec3 spot = Vec3.atCenterOf(helper.absolutePos(new BlockPos(2, 1, 1)));

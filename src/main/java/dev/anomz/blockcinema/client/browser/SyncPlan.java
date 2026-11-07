@@ -3,17 +3,10 @@ package dev.anomz.blockcinema.client.browser;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * What a TV page should do to stay in step with the shared state: pause or resume, jump to the shared
- * time, or play a little faster or slower for a while. Small differences are played away, unnoticed; a
- * jump (which makes the video load again) is only for when it is far off, not too often, and never while
- * it is still loading from the last one. No Minecraft or browser classes, so tests can check it.
- *
- * @param setPaused true or false to pause or resume the page; null to leave it
- * @param seekTo seconds to jump to; null to leave it
- * @param setRate the playback speed to set; null to leave it
+ * What a TV page should do to stay in step with the shared state: pause or resume, jump, or play a little
+ * faster or slower for a while. No Minecraft or browser classes, so tests can check it.
  */
 public record SyncPlan(@Nullable Boolean setPaused, @Nullable Double seekTo, @Nullable Double setRate) {
-    /** Being this far off the shared position while playing makes the screen jump back in step. */
     static final double MAX_DRIFT_SECONDS = 3;
     /** Being this far off while paused makes it jump: nothing is playing, so it costs nothing, and all show the same picture. */
     static final double MAX_PAUSED_DRIFT_SECONDS = 0.5;
@@ -24,7 +17,6 @@ public record SyncPlan(@Nullable Boolean setPaused, @Nullable Double seekTo, @Nu
     /** Speeds YouTube's player offers too. */
     static final double FASTER = 1.25;
     static final double SLOWER = 0.75;
-    /** At most one catch-up jump this often, at first (see {@link #nextSeekCooldown}). */
     static final long SEEK_SYNC_MILLIS = 5000;
     static final long MAX_SEEK_SYNC_MILLIS = 60_000;
     /** A video still loading this long after the last jump is stuck, so jumping may help after all. */
@@ -33,21 +25,7 @@ public record SyncPlan(@Nullable Boolean setPaused, @Nullable Double seekTo, @Nu
 
     private static final SyncPlan NOTHING = new SyncPlan(null, null, null);
 
-    /**
-     * @param sharedPaused whether the TV is paused for everyone
-     * @param gamePaused singleplayer is paused here (the world's clock stands still)
-     * @param visible the screen is in sight (an out-of-sight YouTube page pauses itself)
-     * @param expected where the video should be, in seconds
-     * @param time where the page is
-     * @param length the video's length (0 when live or unknown)
-     * @param pagePaused whether the page is paused
-     * @param loading whether the page is waiting for video to load
-     * @param rate the page's playback speed
-     * @param sincePauseSync milliseconds since the page was last told to pause or resume
-     * @param sinceSeekSync milliseconds since the page was last told to jump
-     * @param seekCooldown least milliseconds between jumps now (see {@link #nextSeekCooldown})
-     * @param seekLead seconds a jump takes to load here: a jump goes that much further, to land in step
-     */
+    /** Times are in seconds, except {@code sincePauseSync}, {@code sinceSeekSync} and {@code seekCooldown}, which are milliseconds. */
     public record Input(boolean sharedPaused, boolean gamePaused, boolean visible, double expected, double time, double length,
             boolean pagePaused, boolean loading, double rate, long sincePauseSync, long sinceSeekSync, long seekCooldown,
             double seekLead) {
@@ -73,7 +51,6 @@ public record SyncPlan(@Nullable Boolean setPaused, @Nullable Double seekTo, @Nu
         return setPaused == null && seekTo == null && setRate == null ? NOTHING : new SyncPlan(setPaused, seekTo, setRate);
     }
 
-    /** The speed that plays away being {@code behind} seconds behind (ahead when negative). */
     private static double nudge(double behind, double rate) {
         if (rate != 1) {
             // Keep going until close, or it has gone past the shared position.

@@ -12,10 +12,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-/**
- * Client to server: skip to the next queued video, go back to the one before (or start over), or take
- * entry {@code index} out of the queue.
- */
+/** Client to server: skip to the next queued video, go back to the one before, or remove entry {@code index}. */
 public record QueueTvPayload(BlockPos origin, int action, int index) implements CustomPacketPayload {
     public static final int NEXT = 0;
     public static final int REMOVE = 1;
@@ -34,14 +31,12 @@ public record QueueTvPayload(BlockPos origin, int action, int index) implements 
         return TYPE;
     }
 
-    /** Runs on the server thread. */
     public static void handle(QueueTvPayload payload, IPayloadContext context) {
         if (context.player() instanceof ServerPlayer player) {
             apply(player, payload);
         }
     }
 
-    /** What the server does with it from {@code player} (also used by the game tests). */
     public static void apply(ServerPlayer player, QueueTvPayload payload) {
         if (!TvRequests.rateLimitAllows(player)) {
             return;

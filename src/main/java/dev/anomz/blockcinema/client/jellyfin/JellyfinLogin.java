@@ -20,12 +20,10 @@ import net.neoforged.fml.loading.FMLPaths;
  * only. The access token is what Jellyfin apps keep after login; the password is never seen or stored.
  */
 public record JellyfinLogin(String server, String serverId, String userId, String userName, String token, String deviceId) {
-    /** The login as last loaded or saved; {@code loaded} false reads the file again. Client thread only. */
     @Nullable
     private static JellyfinLogin current;
     private static boolean loaded;
 
-    /** This player's login, read once and then kept; null when logged out. */
     @Nullable
     public static JellyfinLogin current() {
         if (!loaded) {
@@ -86,7 +84,6 @@ public record JellyfinLogin(String server, String serverId, String userId, Strin
         loaded = true;
     }
 
-    /** The device ID saved earlier, if any (kept across logins). */
     public static Optional<String> savedDeviceId() {
         Path file = file();
         if (!Files.isRegularFile(file)) {

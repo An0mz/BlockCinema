@@ -22,7 +22,6 @@ public record TvClockPayload(long ticks) implements CustomPacketPayload {
         return TYPE;
     }
 
-    /** Runs on the client thread. */
     public static void handle(TvClockPayload payload, IPayloadContext context) {
         TvClockFollower.INSTANCE.report(payload.ticks(), Util.getMillis());
     }

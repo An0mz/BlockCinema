@@ -33,20 +33,17 @@ public final class JellyfinWatch {
         JellyfinApi.Playback playback;
     }
 
-    /** A stream ready for the TV page; {@code onStop} tells this player's Jellyfin where they stopped. */
     public record Stream(String page, Consumer<TvPlayers.Position> onStop) {
     }
 
     private JellyfinWatch() {
     }
 
-    /** Whether this player is logged in to the Jellyfin server with this ID. */
     public static boolean canWatch(String serverId) {
         JellyfinLogin login = JellyfinLogin.current();
         return login != null && serverId.equals(login.serverId());
     }
 
-    /** Whether this player's account couldn't play the video at {@code key} lately. */
     public static boolean failed(String key) {
         Request request = REQUESTS.get(key);
         return request != null && request.state == State.FAILED;
@@ -98,7 +95,6 @@ public final class JellyfinWatch {
         }));
     }
 
-    /** Forgets streams being set up (on leaving a world, or logging out of Jellyfin). */
     public static void clear() {
         REQUESTS.clear();
     }

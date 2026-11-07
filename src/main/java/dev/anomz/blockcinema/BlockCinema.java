@@ -51,7 +51,6 @@ public final class BlockCinema {
         TvRequests.forget(event.getEntity());
     }
 
-    /** A new arrival knows the clock at once, so the first video it starts is at the right time. */
     private static void onLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
         if (event.getEntity() instanceof ServerPlayer player) {
             TvClock.sendTo(player);

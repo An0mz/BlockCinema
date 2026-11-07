@@ -32,14 +32,12 @@ public final class TvPages implements CefSchemeHandlerFactory {
     private record File(String path, String mimeType) {
     }
 
-    /** Page path to the file in the jar. Nothing else is served. */
     private static final Map<String, File> FILES = Map.of(
             "/youtube.html", new File(WEB + "/youtube.html", "text/html"),
             "/twitch.html", new File(WEB + "/twitch.html", "text/html"),
             "/video.html", new File(WEB + "/video.html", "text/html"),
             "/hls.min.js", new File(WEB + "/hls.min.js", "text/javascript"));
 
-    /** Our origin with {@code scheme} (http or https). */
     public static String origin(String scheme) {
         return scheme + "://" + HOST;
     }

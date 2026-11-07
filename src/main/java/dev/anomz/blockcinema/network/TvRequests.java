@@ -27,7 +27,6 @@ public final class TvRequests {
     private TvRequests() {
     }
 
-    /** The origin TV of a valid screen at {@code origin} near the player, or null. */
     @Nullable
     static TvBlockEntity screen(ServerPlayer player, BlockPos origin) {
         Level level = player.level();
@@ -39,7 +38,6 @@ public final class TvRequests {
         return !layout.invalid() && layout.origin().equals(origin) ? tv : null;
     }
 
-    /** Whether the player may change what plays: anyone by default, else its starter and operators. */
     static boolean mayControl(ServerPlayer player, @Nullable TvSource current) {
         return current == null || TvServerConfig.anyoneCanControl() || current.owner().equals(player.getUUID())
                 || player.hasPermissions(2);
@@ -55,7 +53,6 @@ public final class TvRequests {
         return true;
     }
 
-    /** Seconds from a client, kept to something sensible. */
     static double seconds(double value) {
         return Double.isFinite(value) ? Math.max(0, Math.min(value, 7 * 24 * 3600)) : 0;
     }

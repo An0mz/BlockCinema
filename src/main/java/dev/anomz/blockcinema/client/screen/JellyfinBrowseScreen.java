@@ -45,11 +45,9 @@ public final class JellyfinBrowseScreen extends PanelScreen {
     private TextButton audioButton;
     private TextButton subtitleButton;
     private JellyfinApi.Tracks tracks = NO_TRACKS;
-    /** The video the tracks are for, or null. */
     @Nullable
     private String tracksFor;
     private int audioChoice;
-    /** -1: no subtitles. */
     private int subtitleChoice = -1;
     @Nullable
     private TextButton queue;
@@ -58,7 +56,6 @@ public final class JellyfinBrowseScreen extends PanelScreen {
     private boolean loading;
     private boolean closed;
 
-    /** {@code folderId} null lists the user's libraries. */
     public JellyfinBrowseScreen(Screen parent, BlockPos screen, JellyfinLogin login, @Nullable String folderId,
             Component title) {
         super(title, parent);
@@ -89,14 +86,12 @@ public final class JellyfinBrowseScreen extends PanelScreen {
         return panelY + panelH - Ui.PAD - 20;
     }
 
-    /** The row with the audio and subtitle choices, above the bottom bar. */
     private int tracksY() {
         return bottomBarY() - 24;
     }
 
     @Override
     protected void initContent() {
-        // Back from a folder opened from here.
         closed = false;
         int listTop = contentTop() - 4;
         list = addRenderableWidget(new ItemList(minecraft, panelW - 2 * Ui.PAD, tracksY() - 6 - listTop, listTop));
@@ -115,13 +110,11 @@ public final class JellyfinBrowseScreen extends PanelScreen {
             showTracks();
         }));
         subtitleButton = addRenderableWidget(new TextButton(x + w - half, tracksY(), half, 20, Component.empty(), false, () -> {
-            // -1 is "off", then each subtitle track.
             subtitleChoice = subtitleChoice + 1 >= tracks.subtitles().size() ? -1 : subtitleChoice + 1;
             showTracks();
         }));
         showTracks();
         if (TvRemote.source(screen) != null) {
-            // Something plays already: a video can wait its turn instead.
             queue = addRenderableWidget(new TextButton(x + w - 90 - 6 - 90, bottomBarY(), 90, 20,
                     Component.translatable("screen." + BlockCinema.MODID + ".add_to_queue"), false, this::enqueueSelected));
             queue.active = false;
@@ -219,7 +212,6 @@ public final class JellyfinBrowseScreen extends PanelScreen {
         }));
     }
 
-    /** Loads the selected video's audio and subtitle tracks for the buttons; folders have none. */
     private void loadTracks(@Nullable JellyfinApi.Item item) {
         tracks = NO_TRACKS;
         audioChoice = 0;
@@ -235,7 +227,6 @@ public final class JellyfinBrowseScreen extends PanelScreen {
                 return;
             }
             tracks = loaded;
-            // The default audio track, and the default (often forced) subtitles if there are any.
             for (int i = 0; i < loaded.audio().size(); i++) {
                 if (loaded.audio().get(i).isDefault()) {
                     audioChoice = i;
@@ -250,7 +241,6 @@ public final class JellyfinBrowseScreen extends PanelScreen {
         }));
     }
 
-    /** Shows the chosen tracks on the buttons; hidden while there is nothing to choose. */
     private void showTracks() {
         if (audioButton == null) {
             return;
@@ -325,7 +315,6 @@ public final class JellyfinBrowseScreen extends PanelScreen {
             return getX() + width - 6;
         }
 
-        // The panel is the background: no dirt, separators or vanilla selection box.
         @Override
         protected void renderListBackground(GuiGraphics g) {
         }

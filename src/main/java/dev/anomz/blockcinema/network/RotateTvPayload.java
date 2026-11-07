@@ -19,11 +19,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
-/**
- * Client to server: turn the picture of the floor or ceiling screen at {@code origin} a quarter turn
- * clockwise, as seen by someone looking at it (half a turn if a quarter turn would make it too big).
- * Every TV of the screen turns, and what it plays moves to the turned screen's new origin.
- */
+/** Client to server: turn the picture of the floor or ceiling screen at {@code origin} a quarter turn clockwise. */
 public record RotateTvPayload(BlockPos origin) implements CustomPacketPayload {
     public static final Type<RotateTvPayload> TYPE =
             new Type<>(ResourceLocation.fromNamespaceAndPath(BlockCinema.MODID, "rotate_tv"));
@@ -35,14 +31,12 @@ public record RotateTvPayload(BlockPos origin) implements CustomPacketPayload {
         return TYPE;
     }
 
-    /** Runs on the server thread. */
     public static void handle(RotateTvPayload payload, IPayloadContext context) {
         if (context.player() instanceof ServerPlayer player) {
             apply(player, payload);
         }
     }
 
-    /** What the server does with it from {@code player} (also used by the game tests). */
     public static void apply(ServerPlayer player, RotateTvPayload payload) {
         if (!TvRequests.rateLimitAllows(player)) {
             return;

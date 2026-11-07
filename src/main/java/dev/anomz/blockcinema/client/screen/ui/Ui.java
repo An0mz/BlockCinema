@@ -46,19 +46,16 @@ public final class Ui {
         g.fill(x + 2, y + h - 1, x + w - 2, y + h, color);
     }
 
-    /** A rounded box with a one-pixel border. */
     public static void box(GuiGraphics g, int x, int y, int w, int h, int fill, int border) {
         round(g, x, y, w, h, border);
         round(g, x + 1, y + 1, w - 2, h - 2, fill);
     }
 
-    /** The screen's main panel, with a soft shadow. */
     public static void panel(GuiGraphics g, int x, int y, int w, int h) {
         round(g, x - 2, y - 1, w + 4, h + 4, 0x40000000);
         box(g, x, y, w, h, PANEL, PANEL_BORDER);
     }
 
-    /** One of the {@link Icon}s, {@code size} GUI pixels square, tinted {@code color} (ARGB). */
     public static void icon(GuiGraphics g, Icon icon, int x, int y, int size, int color) {
         int index = icon.ordinal();
         RenderSystem.enableBlend();

@@ -31,7 +31,6 @@ public final class VideoLinks {
     private VideoLinks() {
     }
 
-    /** A YouTube link (watch, youtu.be, shorts, live, embed, playlist or channel ID) or a bare video ID. */
     public static Optional<String> youtube(String input) {
         String text = input.trim();
         if (VIDEO_ID.matcher(text).matches()) {
@@ -69,7 +68,6 @@ public final class VideoLinks {
         return Optional.of(isShort && videoOk && !listOk ? page + "&shorts=1" : page);
     }
 
-    /** A Twitch channel name or channel link. */
     public static Optional<String> twitch(String input) {
         String text = input.trim();
         String channel = text;
@@ -86,10 +84,6 @@ public final class VideoLinks {
         return Optional.of(TvPages.ORIGIN + "/twitch.html?channel=" + channel.toLowerCase(Locale.ROOT));
     }
 
-    /**
-     * A direct link to a video file or HLS stream (http or https). It is only ever loaded as a video
-     * by our video page, so a link to a web page just fails to play; it is never shown as a site.
-     */
     public static Optional<String> direct(String input) {
         String text = input.trim();
         if (text.length() > MAX_LINK_LENGTH || !text.contains("://")) {
@@ -114,10 +108,6 @@ public final class VideoLinks {
                 : page + "#auth=" + URLEncoder.encode(authorization, StandardCharsets.UTF_8);
     }
 
-    /**
-     * A short label for one of our pages, for the queue when it has no title: the YouTube video or
-     * playlist ID, the Twitch channel or the link's file name.
-     */
     public static String label(String page) {
         URI uri = parse(page);
         if (uri == null || uri.getRawQuery() == null) {

@@ -49,18 +49,15 @@ public final class JellyfinApi {
     /** Jellyfin counts time in ticks of 100 ns. */
     private static final double TICKS_PER_SECOND = 10_000_000;
 
-    /** An audio or subtitle track of a video: its Jellyfin stream index and a name to show. */
     public record Track(int index, String name, boolean isDefault) {
     }
 
     public record Tracks(List<Track> audio, List<Track> subtitles) {
     }
 
-    /** {@code url} is the stream for the TV page; the rest is for reporting playback to Jellyfin. */
     public record Playback(String url, String itemId, String mediaSourceId, String playSessionId) {
     }
 
-    /** {@code token} is null before login. */
     public JellyfinApi(String server, String deviceId, String version, String token) {
         this.server = server;
         this.deviceId = deviceId;
@@ -68,7 +65,6 @@ public final class JellyfinApi {
         this.token = token;
     }
 
-    /** The mod version, which Jellyfin shows in its device list. */
     public static String appVersion() {
         return ModList.get().getModContainerById(BlockCinema.MODID)
                 .map(container -> container.getModInfo().getVersion().toString()).orElse("0");
@@ -106,7 +102,6 @@ public final class JellyfinApi {
         }
     }
 
-    /** The Authorization header Jellyfin expects from apps. */
     public String authorization() {
         StringBuilder header = new StringBuilder("MediaBrowser Client=\"").append(CLIENT)
                 .append("\", Device=\"").append(DEVICE)
@@ -118,7 +113,6 @@ public final class JellyfinApi {
         return header.toString();
     }
 
-    /** The server's name; fails if this isn't a Jellyfin server. */
     public CompletableFuture<String> serverName() {
         return get("/System/Info/Public").thenApply(json -> {
             JsonObject info = json.getAsJsonObject();
@@ -136,7 +130,6 @@ public final class JellyfinApi {
         });
     }
 
-    /** Whether the code has been approved in another Jellyfin app yet. */
     public CompletableFuture<Boolean> quickConnectApproved(String secret) {
         return get("/QuickConnect/Connect?secret=" + encode(secret))
                 .thenApply(json -> json.getAsJsonObject().get("Authenticated").getAsBoolean());
@@ -153,17 +146,14 @@ public final class JellyfinApi {
         });
     }
 
-    /** The server's ID (the same whichever address it is reached at). */
     public CompletableFuture<String> serverId() {
         return get("/System/Info/Public").thenApply(json -> json.getAsJsonObject().get("Id").getAsString());
     }
 
-    /** The user's libraries. */
     public CompletableFuture<List<Item>> libraries(String userId) {
         return get("/UserViews?userId=" + encode(userId)).thenApply(JellyfinApi::items);
     }
 
-    /** What is in a library or folder (series, seasons and so on), sorted by name. */
     public CompletableFuture<List<Item>> children(String userId, String parentId) {
         return get("/Items?userId=" + encode(userId) + "&parentId=" + encode(parentId)
                 + "&sortBy=SortName&fields=ProductionYear&enableUserData=true&limit=500").thenApply(JellyfinApi::items);
@@ -173,7 +163,6 @@ public final class JellyfinApi {
      * Asks the server for an HLS stream of the item with H.264 video and AAC audio, which the TV's
      * browser can play: Jellyfin copies streams that already fit and transcodes the rest.
      */
-    /** The audio and subtitle tracks of a video. */
     public CompletableFuture<Tracks> tracks(String userId, String itemId) {
         return get("/Items/" + encode(itemId) + "?userId=" + encode(userId)).thenApply(json -> {
             List<Track> audio = new ArrayList<>();
@@ -204,10 +193,6 @@ public final class JellyfinApi {
         return playback(userId, itemId, -1, -1);
     }
 
-    /**
-     * Like {@link #playback(String, String)}, with audio track {@code audio} (-1: the default) and subtitle
-     * track {@code subtitle} burned into the picture (-1: none).
-     */
     public CompletableFuture<Playback> playback(String userId, String itemId, int audio, int subtitle) {
         JsonObject profile = new JsonObject();
         profile.addProperty("Name", CLIENT);
@@ -265,12 +250,10 @@ public final class JellyfinApi {
         });
     }
 
-    /** Tells Jellyfin playback started, so it shows in its dashboard and keeps the stream alive. */
     public CompletableFuture<Void> reportStarted(Playback playback) {
         return post("/Sessions/Playing", playbackInfo(playback)).thenApply(json -> null);
     }
 
-    /** Tells Jellyfin playback stopped {@code seconds} in, so it saves the position and stops transcoding. */
     public CompletableFuture<Void> reportStopped(Playback playback, double seconds) {
         JsonObject info = playbackInfo(playback);
         info.addProperty("PositionTicks", (long) (seconds * TICKS_PER_SECOND));

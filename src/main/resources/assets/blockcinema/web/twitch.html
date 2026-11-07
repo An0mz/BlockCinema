@@ -16,7 +16,6 @@
   var channel = new URLSearchParams(location.search).get('channel') || '';
   var player;
   var ready = false;
-  // Silent until the mod says how loud (it knows how far away the player is).
   var volume = 0;
 
   // Called by the mod a few times a second: volume 0 to 1 from the player's distance, set with the
@@ -28,20 +27,15 @@
     }
   };
 
-  // Where the video is, once a second, for the mod's time bar and resume (read from the browser console):
-  // "[blockcinema-state] <seconds> <length in seconds, 0 if live or unknown> <1 if paused> <1 if loading>".
   function report(time, length, paused) {
     console.log('[blockcinema-state] ' + (time || 0).toFixed(1) + ' ' + (isFinite(length) && length > 0 ? length.toFixed(1) : '0')
         + ' ' + (paused ? 1 : 0) + ' 0');
   }
 
-  // What went wrong, for the mod's messages ("none" when playing again):
-  // "[blockcinema-error] <code>".
   function reportError(code) {
     console.log('[blockcinema-error] ' + code);
   }
 
-  // The video ended, so the screen's queue can go on: "[blockcinema-ended]".
   function reportEnded() {
     console.log('[blockcinema-ended]');
   }
@@ -50,7 +44,6 @@
   window.blockcinemaSeek = function (seconds) {
   };
 
-  // Called by the mod to follow the TV's shared play/pause state.
   window.blockcinemaSetPaused = function (paused) {
     if (!ready) {
       return;

@@ -108,7 +108,6 @@ public final class JellyfinLoginScreen extends PanelScreen {
                 }));
     }
 
-    /** Asks every couple of seconds whether the code was approved. */
     private void poll(JellyfinApi api, String secret, long startedAt) {
         CompletableFuture.runAsync(() -> {
         }, CompletableFuture.delayedExecutor(POLL_SECONDS, TimeUnit.SECONDS))
@@ -151,7 +150,6 @@ public final class JellyfinLoginScreen extends PanelScreen {
             return;
         }
         Ui.box(g, x, boxY, w, CODE_BOX_H, Ui.SURFACE, Ui.ACCENT);
-        // The code, big and spaced out so it's easy to read off.
         String spaced = String.join(" ", code.split(""));
         g.pose().pushPose();
         g.pose().translate(x + w / 2f, boxY + CODE_BOX_H / 2f - 10, 0);

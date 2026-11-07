@@ -13,9 +13,8 @@ import java.util.regex.Pattern;
 import org.jetbrains.annotations.Nullable;
 
 /**
- * What a TV page URL may look like, checked by the server before it shares one with everybody. Pages are
- * our own (see the client's {@code TvPages}); only video IDs, a channel name or a video link can be in
- * them. No Minecraft or browser classes here, so the dedicated server can use it.
+ * What a TV page URL may look like, checked by the server before it shares one with everybody.
+ * No Minecraft or browser classes here, so the dedicated server can use it.
  */
 public final class TvPageRules {
     /**
@@ -28,11 +27,9 @@ public final class TvPageRules {
 
     private static final Pattern VIDEO_ID = Pattern.compile("[A-Za-z0-9_-]{11}");
     private static final Pattern LIST_ID = Pattern.compile("[A-Za-z0-9_-]{2,64}");
-    /** A video's place in a playlist, from 0. */
     private static final Pattern LIST_INDEX = Pattern.compile("\\d{1,4}");
     public static final int MAX_LIST_INDEX = 9999;
     private static final Pattern TWITCH_CHANNEL = Pattern.compile("[a-z0-9_]{1,25}");
-    /** Jellyfin's server and item IDs: 32 hex digits. */
     private static final Pattern JELLYFIN_ID = Pattern.compile("[0-9a-f]{32}");
     private static final String JELLYFIN_PREFIX = "jellyfin:";
     /** A Jellyfin stream index, or -1 (audio: the default track; subtitles: none). */
@@ -41,10 +38,6 @@ public final class TvPageRules {
     private TvPageRules() {
     }
 
-    /**
-     * Whether {@code page} is one of our pages for {@code service}. For Jellyfin it is only which video on
-     * which server ({@link #jellyfinPage}): each viewer streams it with their own login.
-     */
     public static boolean valid(TvService service, String page) {
         if (page.length() > MAX_PAGE_LENGTH) {
             return false;
@@ -76,28 +69,21 @@ public final class TvPageRules {
         };
     }
 
-    /** What a Jellyfin TV shares: the server's ID and the video's ID, never a login or an address. */
     public static String jellyfinPage(String serverId, String itemId) {
         return jellyfinPage(serverId, itemId, -1, -1);
     }
 
-    /**
-     * Like {@link #jellyfinPage(String, String)}, with the audio and subtitle tracks everyone watching gets
-     * (Jellyfin stream indexes; -1 is the default audio and no subtitles).
-     */
     public static String jellyfinPage(String serverId, String itemId, int audio, int subtitle) {
         String page = JELLYFIN_PREFIX + serverId.toLowerCase(Locale.ROOT) + ":" + itemId.toLowerCase(Locale.ROOT);
         return audio < 0 && subtitle < 0 ? page : page + ":" + Math.max(-1, audio) + ":" + Math.max(-1, subtitle);
     }
 
-    /** The audio and subtitle tracks in a {@link #jellyfinPage} ({-1, -1} when it names none). */
     public static int[] jellyfinTracks(String page) {
         String[] parts = jellyfinIds(page);
         return parts == null || parts.length < 4 ? new int[] { -1, -1 }
                 : new int[] { Integer.parseInt(parts[2]), Integer.parseInt(parts[3]) };
     }
 
-    /** The server and item IDs (then any tracks) in a {@link #jellyfinPage}, or null if it isn't one. */
     @Nullable
     public static String[] jellyfinIds(String page) {
         if (!page.startsWith(JELLYFIN_PREFIX)) {
@@ -109,7 +95,6 @@ public final class TvPageRules {
                 ? ids : null;
     }
 
-    /** The host a video-link page plays from (lowercase), or null if it isn't a valid video-link page. */
     @Nullable
     public static String linkHost(String page) {
         try {
@@ -150,7 +135,6 @@ public final class TvPageRules {
                 && (index == null || LIST_INDEX.matcher(index).matches()) && (isShort == null || "1".equals(isShort));
     }
 
-    /** Whether a YouTube page plays a Short (it came from a shorts link): fullscreen starts in the vertical view. */
     public static boolean youtubeShort(String page) {
         String list = youtubeList(page);
         return "1".equals(youtubeParam(page, "shorts")) || list != null && list.startsWith(CHANNEL_SHORTS);
@@ -159,13 +143,11 @@ public final class TvPageRules {
     /** A channel's Shorts as a playlist: this, then the channel ID without its "UC". */
     public static final String CHANNEL_SHORTS = "UUSH";
 
-    /** Where a YouTube playlist page starts (from 0). */
     public static int youtubeListIndex(String page) {
         String index = youtubeParam(page, "index");
         return index != null && LIST_INDEX.matcher(index).matches() ? Integer.parseInt(index) : 0;
     }
 
-    /** The playlist a YouTube page plays, or null if it plays a single video. */
     @Nullable
     public static String youtubeList(String page) {
         return youtubeParam(page, "list");
@@ -182,12 +164,10 @@ public final class TvPageRules {
         }
     }
 
-    /** Our YouTube page playing playlist {@code list} from video {@code index} (counting from 0). */
     public static String youtubeListPage(String list, int index) {
         return "https://" + HOST + "/youtube.html?list=" + list + "&index=" + Math.max(0, Math.min(index, MAX_LIST_INDEX));
     }
 
-    /** The video link in a video page, if it is an http(s) link served under the page's own scheme. */
     @Nullable
     private static URI videoSource(@Nullable String src, String pageScheme) {
         if (src == null || src.length() > MAX_LINK_LENGTH || !("https".equals(pageScheme) || "http".equals(pageScheme))) {
@@ -202,7 +182,6 @@ public final class TvPageRules {
         }
     }
 
-    /** Decoded query parameters, or null if a name repeats or the query is malformed. */
     @Nullable
     private static Map<String, String> query(@Nullable String raw) {
         Map<String, String> params = new HashMap<>();

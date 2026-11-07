@@ -26,10 +26,8 @@ public final class TvWatchScreen extends Screen {
     private static final float VOLUME_STEP = 0.1f;
 
     private final BlockPos screen;
-    /** Whether this screen hid the HUD (so it shows it again when left). */
     private boolean hidGui;
     private long openedMillis;
-    /** The volume after the last change, shown in place of the help for a moment. */
     private Component notice = Component.empty();
     private long noticeMillis;
 
@@ -82,12 +80,10 @@ public final class TvWatchScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // The world shows as it is; no blur or dimming.
     }
 
     @Override
     public void tick() {
-        // Turned off, broken or too far away.
         if (TvRemote.source(screen) == null || minecraft.player == null || !minecraft.player.isAlive()) {
             onClose();
         }

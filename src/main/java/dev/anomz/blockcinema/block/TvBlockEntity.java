@@ -35,23 +35,16 @@ import net.minecraft.world.level.block.state.BlockState;
  */
 public class TvBlockEntity extends BlockEntity {
     private static final long LAYOUT_CHECK_INTERVAL = 10;
-    /** Most videos waiting in a screen's queue. */
     public static final int MAX_QUEUE = 32;
-    /**
-     * TVs with something to play on this client, for the client's players to follow (client thread only).
-     * Weak, so unloaded TVs never linger.
-     */
     public static final Set<TvBlockEntity> CLIENT_PLAYING = Collections.newSetFromMap(new WeakHashMap<>());
 
     private TvLayout layout;
     private long layoutCheckedAt = Long.MIN_VALUE;
     @Nullable
     private TvSource source;
-    /** What plays after the current video, in order (origin only). */
     private final List<TvQueueEntry> queue = new ArrayList<>();
     /** What played before, latest first, for "previous" (origin only, server side; not saved). */
     private final Deque<TvQueueEntry> history = new ArrayDeque<>();
-    /** Whether a TV of the screen had a redstone signal at the last check (origin only, server side). */
     private boolean powered;
     /** Whether the signal paused what plays, so it resumes when the signal stops (a manual pause doesn't). */
     private boolean pausedByRedstone;
@@ -60,7 +53,6 @@ public class TvBlockEntity extends BlockEntity {
         super(BlockCinemaRegistries.TV_BLOCK_ENTITY.get(), pos, state);
     }
 
-    /** This TV's screen layout, re-checked twice a second so placing or breaking TVs updates it. */
     public TvLayout layout(long gameTime) {
         if (layout == null || gameTime - layoutCheckedAt >= LAYOUT_CHECK_INTERVAL || gameTime < layoutCheckedAt) {
             layout = TvLayout.of(level, worldPosition, getBlockState());
@@ -69,24 +61,20 @@ public class TvBlockEntity extends BlockEntity {
         return layout;
     }
 
-    /** What this TV's screen plays, if this is the screen's origin and something is on. */
     @Nullable
     public TvSource source() {
         return source;
     }
 
-    /** Server side: sets what the screen plays (null: nothing, the queue stays) and sends it to nearby clients. */
     public void setSource(@Nullable TvSource source) {
         this.source = source;
         sync();
     }
 
-    /** What plays after the current video (unmodifiable). */
     public List<TvQueueEntry> queue() {
         return Collections.unmodifiableList(queue);
     }
 
-    /** Server side: adds to the end of the queue; false when it is full. */
     public boolean enqueue(TvQueueEntry entry) {
         if (queue.size() >= MAX_QUEUE) {
             return false;
@@ -96,7 +84,6 @@ public class TvBlockEntity extends BlockEntity {
         return true;
     }
 
-    /** Server side: plays the next queued video; false if the queue is empty (then nothing changes). */
     public boolean playNext(long clockTicks) {
         if (queue.isEmpty()) {
             return false;
@@ -136,7 +123,6 @@ public class TvBlockEntity extends BlockEntity {
         return new TvQueueEntry(source.service(), source.page(), "", source.owner(), source.ownerName());
     }
 
-    /** Server side: takes one entry out of the queue. */
     public void removeQueued(int index) {
         if (index >= 0 && index < queue.size()) {
             queue.remove(index);
@@ -144,7 +130,6 @@ public class TvBlockEntity extends BlockEntity {
         }
     }
 
-    /** Server side: turns the screen off and empties its queue. */
     public void turnOff() {
         source = null;
         queue.clear();
@@ -152,7 +137,6 @@ public class TvBlockEntity extends BlockEntity {
         sync();
     }
 
-    /** Server side: the screen's origin moved to {@code target} (it was turned): what plays and the queue go along. */
     public void moveScreenTo(TvBlockEntity target) {
         target.source = source;
         target.queue.clear();
@@ -170,10 +154,6 @@ public class TvBlockEntity extends BlockEntity {
         }
     }
 
-    /**
-     * Server side: called when a neighbor of a TV changes. A redstone signal on any TV of the screen
-     * pauses what it plays; when the signal stops, it plays on if the signal paused it.
-     */
     public static void checkRedstone(Level level, BlockPos pos, BlockState state) {
         if (level.isClientSide) {
             return;
@@ -257,7 +237,6 @@ public class TvBlockEntity extends BlockEntity {
         }
     }
 
-    /** The service saved under "service" if its page is still valid for it, else null. */
     @Nullable
     private static TvService readService(CompoundTag saved) {
         for (TvService candidate : TvService.values()) {

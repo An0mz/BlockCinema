@@ -27,9 +27,7 @@ public final class TvFullscreenScreen extends Screen {
     private static final float VOLUME_STEP = 0.1f;
     private static final float WHEEL_VOLUME_STEP = 0.05f;
     private static final int SKIP_SECONDS = 10;
-    /** The control bar below a wide picture. */
     private static final int BAR_H = 44;
-    /** Room on each side of a vertical picture, for its buttons. */
     private static final int SIDE_W = 76;
 
     private final Screen parent;
@@ -56,7 +54,6 @@ public final class TvFullscreenScreen extends Screen {
     @Override
     protected void init() {
         if (timeBar == null) {
-            // Shorts links and screens taller than wide start in the vertical view.
             TvSource source = TvRemote.source(screen);
             vertical = source != null && TvPageRules.youtubeShort(source.page())
                     || minecraft.level != null && minecraft.level.getBlockEntity(screen) instanceof TvBlockEntity tv
@@ -97,7 +94,6 @@ public final class TvFullscreenScreen extends Screen {
         addRenderableWidget(exitButton(width - 8 - 20, rowY + 2));
     }
 
-    /** Shorts-style: the picture in the middle, up and down at the top right of it, the rest below them. */
     private void initVertical() {
         picH = Math.min(height - 30, (width - 2 * SIDE_W) * 16 / 9);
         picW = picH * 9 / 16;
@@ -171,7 +167,6 @@ public final class TvFullscreenScreen extends Screen {
         // Until the browser has turned to the view's shape, there is nothing right to show.
         if (picture != null && TvPlayers.portrait(screen) == vertical) {
             TvPlayers.markSeen(screen);
-            // The whole texture, whatever size the browser is.
             graphics.blit(picture, picX, picY, picW, picH, 0, 0, 16, 9, 16, 9);
         }
         super.render(graphics, mouseX, mouseY, partialTick);
@@ -179,7 +174,6 @@ public final class TvFullscreenScreen extends Screen {
 
     @Override
     public void tick() {
-        // Turned off, broken or too far away.
         if (TvRemote.source(screen) == null) {
             onClose();
             return;
@@ -189,7 +183,6 @@ public final class TvFullscreenScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-        // The picture covers the world; no blur or dimming behind it.
     }
 
     private boolean onPicture(double mouseX, double mouseY) {

@@ -12,12 +12,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
 /**
- * Where one TV sits in its screen, seen from the front: {@code col} counts from the viewer's left,
- * {@code row} from the bottom of the picture. A screen is a whole group of TVs of the same kind lying the
- * same way (same {@link ScreenFrame}), each next to the other along the screen, that fills a rectangle of
- * at most {@link #MAX_COLS} by {@link #MAX_ROWS} (16:9). Every TV of the group works out the same screen,
- * so their slices of the picture line up. Any other group (a cross, an L, one with a gap, or too big) is
- * {@code invalid} and shows nothing.
+ * Where one TV sits in its screen, seen from the front: {@code col} counts from the viewer's left, {@code row}
+ * from the bottom of the picture. A screen is a filled rectangle of same-kind TVs lying the same way, at most
+ * {@link #MAX_COLS} by {@link #MAX_ROWS} (16:9); any other group is {@code invalid} and shows nothing.
  */
 public record TvLayout(BlockPos origin, ScreenFrame frame, int cols, int rows, int col, int row, boolean invalid) {
     /** Biggest screen in TVs; also bounds the work done per check. */
@@ -25,11 +22,9 @@ public record TvLayout(BlockPos origin, ScreenFrame frame, int cols, int rows, i
     public static final int MAX_ROWS = 9;
     private static final int MAX_CELLS = MAX_COLS * MAX_ROWS;
 
-    /** The screen the TV at {@code pos} (in {@code state}) belongs to. */
     public static TvLayout of(BlockGetter level, BlockPos pos, BlockState state) {
         ScreenFrame frame = ScreenFrame.of(state);
         if (frame == null) {
-            // Not a TV (any more): no screen.
             return new TvLayout(pos, ScreenFrame.of(FrontAndTop.NORTH_UP), 1, 1, 0, 0, true);
         }
         Vec3i right = frame.right();
@@ -73,27 +68,22 @@ public record TvLayout(BlockPos origin, ScreenFrame frame, int cols, int rows, i
                 !rectangle || cols > MAX_COLS || rows > MAX_ROWS);
     }
 
-    /** Whether {@code other} is a TV of the same kind as {@code state}, lying the same way. */
     static boolean sameScreen(BlockState other, BlockState state, ScreenFrame frame) {
         return other.getBlock() == state.getBlock() && frame.equals(ScreenFrame.of(other));
     }
 
-    /** The blocks the screen covers (its far corner can be on either side of the origin). */
     public AABB bounds() {
         return new AABB(origin).minmax(new AABB(cell(cols - 1, rows - 1)));
     }
 
-    /** Whether the screen is taller than wide, so its picture is portrait (9:16, for Shorts). */
     public boolean portrait() {
         return rows > cols * frame.cellWidth();
     }
 
-    /** The TV {@code c} to the right of and {@code r} up from the origin. */
     public BlockPos cell(int c, int r) {
         return origin.offset(multiply(frame.right(), c)).offset(multiply(frame.top(), r));
     }
 
-    /** How many {@code step}s {@code offset} goes along it (steps are whole blocks on one or two axes). */
     private static int along(Vec3i offset, Vec3i step) {
         int dot = offset.getX() * step.getX() + offset.getY() * step.getY() + offset.getZ() * step.getZ();
         int length = step.getX() * step.getX() + step.getY() * step.getY() + step.getZ() * step.getZ();

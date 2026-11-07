@@ -12,11 +12,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
 import dev.anomz.blockcinema.network.TvClockPayload;
 
 /**
- * The clock shared videos run on, counted in ticks: the world's game time plus the ticks a lagging server
- * didn't get to. Videos play in real time, so on game time alone a server at 15 TPS would have every TV
- * jumping back again and again. It stands still with the world (server off, singleplayer paused), like
- * game time. Saved with the world, as the {@link TvSource}s saved in TVs are anchored to it. Server side;
- * clients follow it with {@link TvClockFollower}.
+ * The clock shared videos run on, in ticks: the world's game time plus the ticks a lagging server didn't get to.
+ * Videos play in real time, so on game time alone a server at 15 TPS would make every TV jump back again
+ * and again. Server side; clients follow it with {@link TvClockFollower}.
  */
 public final class TvClock extends SavedData {
     private static final String NAME = BlockCinema.MODID + "_clock";
@@ -52,12 +50,10 @@ public final class TvClock extends SavedData {
         return server.overworld().getDataStorage().computeIfAbsent(FACTORY, NAME);
     }
 
-    /** The clock now, in ticks. Server side. */
     public static long now(Level level) {
         return level.getGameTime() + (long) of(level.getServer()).lostTicks;
     }
 
-    /** Call at the end of every server tick. */
     public static void onServerTick(MinecraftServer server) {
         long now = Util.getMillis();
         if (lastTickMillis != 0) {
@@ -85,7 +81,6 @@ public final class TvClock extends SavedData {
         }
     }
 
-    /** Call when a server stops: the next one in this game starts counting afresh. */
     public static void onServerStopped() {
         lastTickMillis = 0;
         lastSentMillis = 0;

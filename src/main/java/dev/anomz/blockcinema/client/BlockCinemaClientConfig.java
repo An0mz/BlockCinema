@@ -3,10 +3,7 @@ package dev.anomz.blockcinema.client;
 import dev.anomz.blockcinema.TvService;
 import net.neoforged.neoforge.common.ModConfigSpec;
 
-/**
- * Each player's own settings ({@code config/blockcinema-client.toml}, also under Mods > Block Cinema >
- * Config). They only change what this player's game plays and shows.
- */
+/** Each player's own settings ({@code config/blockcinema-client.toml}); they only change what this player's game plays and shows. */
 public final class BlockCinemaClientConfig {
     public enum Quality {
         /** 1080p for screens 4 or more TVs wide and fullscreen, 720p for smaller ones. */
@@ -51,7 +48,6 @@ public final class BlockCinemaClientConfig {
     private BlockCinemaClientConfig() {
     }
 
-    // Before the config loads, use the defaults.
     public static boolean playVideos() {
         return !SPEC.isLoaded() || VIDEO.get();
     }
@@ -72,7 +68,6 @@ public final class BlockCinemaClientConfig {
         return SPEC.isLoaded() && CAPTIONS.get();
     }
 
-    /** Whether the TV menu offers this service to this player. */
     public static boolean shows(TvService service) {
         if (!SPEC.isLoaded()) {
             return true;

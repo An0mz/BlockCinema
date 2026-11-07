@@ -52,25 +52,19 @@ import net.neoforged.fml.loading.FMLPaths;
  * the screen is turned off, broken or too far away. Client thread only.
  */
 public final class TvPlayers {
-    /** Browser size for small screens; big screens and fullscreen get {@link #HD_WIDTH} (and YouTube picks 1080p). */
     private static final int WIDTH = 1280;
     private static final int HEIGHT = 720;
     private static final int HD_WIDTH = 1920;
     private static final int HD_HEIGHT = 1080;
-    /** Screens at least this many blocks wide play in 1080p. */
     private static final int HD_COLUMNS = 4;
-    /** A screen this far from the player stops. */
     private static final double MAX_DISTANCE = 96;
-    /** State updates sent at least this often (in checks), in case the page wasn't ready for the last one. */
     private static final int STATE_RESEND_INTERVAL = 8;
     /**
      * A screen not seen from the front for this long counts as out of sight. YouTube's terms don't allow
      * playing in a player the user can't see, so our YouTube page pauses until it is seen again.
      */
     private static final long OUT_OF_SIGHT_MILLIS = 3000;
-    /** A report this soon after a jump can be from before it (pages report once a second). */
     private static final long REPORT_MILLIS = 1100;
-    /** A jump never goes further ahead than this to make up for loading. */
     private static final double MAX_SEEK_LEAD_SECONDS = 10;
 
     private static final Long2ObjectMap<Playing> PLAYING = new Long2ObjectOpenHashMap<>();
@@ -78,26 +72,21 @@ public final class TvPlayers {
             new WatchPositions(FMLPaths.CONFIGDIR.get().resolve(BlockCinema.MODID).resolve("positions.json"));
     private static final Consumer<Position> NOTHING = position -> {
     };
-    /** Why screens near the player don't play for them; rebuilt every check. */
     private static final Long2ObjectMap<Hidden> HIDDEN = new Long2ObjectOpenHashMap<>();
-    /** The screen picked by "only the TV you look at", kept until another is looked at. */
     @Nullable
     private static Long focused;
-    /** The screen watched fullscreen, which always plays. */
     @Nullable
     private static Long fullscreenOrigin;
     private static MCEFClient client;
     private static int nextTextureId;
     private static boolean gamePaused;
 
-    /** Why a screen doesn't play for this player (their own settings); shown on its screen. */
     public enum Hidden {
         VIDEO_OFF,
         NOT_LOOKED_AT,
         TOO_MANY
     }
 
-    /** Where a video is: seconds in, its length (0 when live or not known yet), whether it is paused and whether it is waiting to load. */
     public record Position(double time, double length, boolean paused, boolean loading) {
         public boolean seekable() {
             return length > 0;
@@ -107,53 +96,33 @@ public final class TvPlayers {
     private static final class Playing {
         final MCEFBrowser browser;
         final ResourceLocation texture;
-        /** What is loaded: the shared page (for Jellyfin, which video on which server). */
         String key;
         /** Key for {@link WatchPositions}, or null when the service keeps the position itself. */
         @Nullable
         String resumeKey;
-        /** Runs once with the last position when this stops playing (turned off, replaced, broken or too far away). */
         Consumer<Position> onStop;
-        /** Where the YouTube playlist is, as the page last said; -1 if unknown. */
         int listIndex = -1;
-        /** The browser is portrait (9:16), on a screen taller than wide or in the vertical fullscreen view. */
         boolean portrait;
-        /** The shared state the page was last brought in step with; null until the first check. */
         @Nullable
         TvSource synced;
-        /** Whether the page was last told to show captions; null until told. */
         @Nullable
         Boolean captions;
-        /** The page has reported, so it's up and hears what the mod sends it. */
         boolean pageHeard;
-        /** Fullscreen shows the vertical (Shorts) view. */
         boolean verticalView;
-        /** Whether this player already told the server the video ended (once per video). */
         boolean endedSent;
-        /** What went wrong, as the page or the browser said (see {@link #error}); null when fine. */
         @Nullable
         String error;
-        /** The page's last report (see {@link StateReports}); null until the first one. */
         @Nullable
         Position position;
-        /** When {@link #position} came in; a playing video has moved on since. */
         long positionMillis;
-        /** The playback speed the page was last told. */
         double rate = 1;
-        /** Least time between catch-up jumps now (see {@link SyncPlan#nextSeekCooldown}). */
         long seekCooldown = SyncPlan.SEEK_SYNC_MILLIS;
-        /** How long a jump takes to load here, in seconds, from the last ones. */
         double seekLead;
-        /** When the jump still being waited for was sent; 0 when none. */
         long seekSentMillis;
-        /** The page said it was loading since that jump. */
         boolean seekLoaded;
-        /** This TV's own volume, 0 to 1, set from its menu. */
         float userVolume = BlockCinemaClientConfig.startVolume();
-        /** Volume from the sound settings and the player's distance (or full when watched fullscreen). */
         float worldGain = 1;
         boolean fullscreen;
-        /** The browser's width now (its height is 9/16 of it). */
         int width = WIDTH;
         /** Last volume sent to the page; -1 sends it again. */
         float volume = -1;
@@ -188,12 +157,10 @@ public final class TvPlayers {
         return MCEF.isInitialized();
     }
 
-    /** Where this player left the video on {@code page} last time, in seconds (0 if never or finished). */
     public static double resumeSeconds(String page) {
         return POSITIONS.get(page);
     }
 
-    /** {@code pageUrl} starting {@code seconds} in; our pages read the start from the fragment. */
     public static String withStart(String pageUrl, double seconds) {
         if (seconds < 1) {
             return pageUrl;
@@ -211,21 +178,18 @@ public final class TvPlayers {
         JellyfinWatch.clear();
     }
 
-    /** The picture for the screen at {@code origin}, or null when nothing is showing there yet. */
     @Nullable
     public static ResourceLocation texture(BlockPos origin) {
         Playing playing = PLAYING.get(origin.asLong());
         return playing == null || playing.browser.getRenderer().getTextureID() == 0 ? null : playing.texture;
     }
 
-    /** Where the screen at {@code origin} is in its video, or null before its page first reports. */
     @Nullable
     public static Position position(BlockPos origin) {
         Playing playing = PLAYING.get(origin.asLong());
         return playing == null ? null : playing.position;
     }
 
-    /** A page's report, on the client thread (from {@link StateReports}). */
     static void report(CefBrowser browser, double time, double length, boolean paused, boolean loading) {
         for (Playing playing : PLAYING.values()) {
             if (playing.browser == browser) {
@@ -236,7 +200,6 @@ public final class TvPlayers {
         }
     }
 
-    /** A page says its video ended, on the client thread: the server can start the next queued one. */
     static void reportEnded(CefBrowser browser, int nextInList) {
         for (Long2ObjectMap.Entry<Playing> entry : PLAYING.long2ObjectEntrySet()) {
             Playing playing = entry.getValue();
@@ -247,7 +210,6 @@ public final class TvPlayers {
         }
     }
 
-    /** A YouTube page says where its playlist is, on the client thread. */
     static void reportListIndex(CefBrowser browser, int index) {
         for (Playing playing : PLAYING.values()) {
             if (playing.browser == browser) {
@@ -256,19 +218,16 @@ public final class TvPlayers {
         }
     }
 
-    /** Where the screen's YouTube playlist is (from 0), or -1 if unknown or not a playlist. */
     public static int listIndex(BlockPos origin) {
         Playing playing = PLAYING.get(origin.asLong());
         return playing == null ? -1 : playing.listIndex;
     }
 
-    /** Whether the screen's picture is portrait (9:16): screens taller than wide, and the vertical fullscreen view. */
     public static boolean portrait(BlockPos origin) {
         Playing playing = PLAYING.get(origin.asLong());
         return playing != null && playing.portrait;
     }
 
-    /** A page's or the browser's error report, on the client thread; null clears it. */
     static void reportError(CefBrowser browser, @Nullable String code) {
         for (Playing playing : PLAYING.values()) {
             if (playing.browser == browser) {
@@ -287,13 +246,11 @@ public final class TvPlayers {
         return playing == null ? null : playing.error;
     }
 
-    /** The TV's own volume, 0 to 1 (1 when nothing plays). */
     public static float volume(BlockPos origin) {
         Playing playing = PLAYING.get(origin.asLong());
         return playing == null ? 1 : playing.userVolume;
     }
 
-    /** Sets the TV's own volume, 0 to 1, on top of the sound settings and distance. Only for this player. */
     public static void setVolume(BlockPos origin, float volume) {
         Playing playing = PLAYING.get(origin.asLong());
         if (playing != null) {
@@ -302,7 +259,6 @@ public final class TvPlayers {
         }
     }
 
-    /** While watched fullscreen, the screen plays at full volume whatever the distance, and counts as in sight. */
     public static void setFullscreen(BlockPos origin, boolean fullscreen) {
         fullscreenOrigin = fullscreen ? origin.asLong() : null;
         Playing playing = PLAYING.get(origin.asLong());
@@ -313,7 +269,6 @@ public final class TvPlayers {
         }
     }
 
-    /** Whether fullscreen shows the vertical (9:16, Shorts) view; the browser turns to match. */
     public static void setVerticalView(BlockPos origin, boolean vertical) {
         Playing playing = PLAYING.get(origin.asLong());
         if (playing != null) {
@@ -321,7 +276,6 @@ public final class TvPlayers {
         }
     }
 
-    /** Called while drawing a screen seen from the front. */
     public static void markSeen(BlockPos origin) {
         Playing playing = PLAYING.get(origin.asLong());
         if (playing != null) {
@@ -329,13 +283,8 @@ public final class TvPlayers {
         }
     }
 
-    /**
-     * Starts, keeps in step and stops this client's browsers to match what the server says the screens
-     * near the player play, and sets each one's volume and whether it is in sight. Run a few times a second.
-     */
     public static void tick(ClientLevel level, Player player) {
         long now = Util.getMillis();
-        // Singleplayer paused (Esc menu): the world's clock stands still, so the TVs pause with it.
         boolean gamePaused = Minecraft.getInstance().isPaused();
         if (gamePaused != TvPlayers.gamePaused) {
             TvPlayers.gamePaused = gamePaused;
@@ -360,7 +309,6 @@ public final class TvPlayers {
         });
     }
 
-    /** A screen near the player with something on. */
     private record Candidate(TvBlockEntity tv, TvLayout layout, TvSource source, double distanceSqr) {
     }
 
@@ -381,11 +329,6 @@ public final class TvPlayers {
         return candidates;
     }
 
-    /**
-     * The screens this player's settings let play (see {@link BlockCinemaClientConfig}), nearest first.
-     * The others go in {@link #HIDDEN} with the reason, for the card on their screen. A screen watched
-     * fullscreen always plays.
-     */
     private static List<Candidate> choose(List<Candidate> candidates, Player player) {
         candidates.sort(Comparator.comparingDouble(Candidate::distanceSqr));
         List<Candidate> chosen = new ArrayList<>();
@@ -411,10 +354,6 @@ public final class TvPlayers {
         return chosen;
     }
 
-    /**
-     * The screen the player looks at (the nearest one along their view), else the one looked at last if
-     * it is still around, else the nearest.
-     */
     @Nullable
     private static Long focus(List<Candidate> candidates, Player player) {
         if (candidates.isEmpty()) {
@@ -439,7 +378,6 @@ public final class TvPlayers {
         return focused;
     }
 
-    /** Why a screen near the player doesn't play for them, or null if it does (or nothing is on). */
     @Nullable
     public static Hidden hidden(BlockPos origin) {
         return HIDDEN.get(origin.asLong());
@@ -456,7 +394,6 @@ public final class TvPlayers {
             String resumeKey = key;
             Consumer<Position> onStop = NOTHING;
             if (source.service() == TvService.YOUTUBE && !Agreements.youtube()) {
-                // YouTube plays only for players who agreed to its terms; the others see a card.
                 return;
             }
             if (source.service() == TvService.JELLYFIN) {
@@ -468,7 +405,6 @@ public final class TvPlayers {
                     return;
                 }
                 page = stream.page();
-                // Jellyfin keeps the watch position itself.
                 resumeKey = null;
                 onStop = stream.onStop();
             }
@@ -486,7 +422,6 @@ public final class TvPlayers {
             playing.width = width;
             playing.portrait = portrait;
             int height = width == HD_WIDTH ? HD_HEIGHT : HEIGHT;
-            // A portrait screen gets a portrait browser: Shorts fill it.
             playing.browser.resize(portrait ? height : width, portrait ? width : height);
         }
         syncState(playing, source, clockTicks, now);
@@ -494,7 +429,6 @@ public final class TvPlayers {
         updateCaptions(playing);
     }
 
-    /** Tells the page whether to show captions (YouTube's), once it is up and whenever the setting changes. */
     private static void updateCaptions(Playing playing) {
         boolean captions = BlockCinemaClientConfig.youtubeCaptions();
         if (!playing.pageHeard || Boolean.valueOf(captions).equals(playing.captions)) {
@@ -545,7 +479,6 @@ public final class TvPlayers {
         return playing;
     }
 
-    /** Pauses, resumes, jumps or speeds the page to match the shared state, gently (see {@link SyncPlan}). */
     private static void syncState(Playing playing, TvSource source, long clockTicks, long now) {
         if (playing.synced == null) {
             playing.synced = source;
@@ -560,7 +493,6 @@ public final class TvPlayers {
         if (position == null) {
             return;
         }
-        // The page reports once a second: a playing video has moved on since.
         double time = position.time();
         if (!position.paused() && !position.loading()) {
             time += (now - playing.positionMillis) / 1000.0 * playing.rate;
@@ -586,10 +518,6 @@ public final class TvPlayers {
         }
     }
 
-    /**
-     * Once the last jump has loaded, learns from it: how long jumps take to load here, so the next lands
-     * in step, and whether it helped, so one that doesn't isn't repeated at once.
-     */
     private static void noteJumpLoaded(Playing playing, Position position, double drift, long now) {
         if (playing.seekSentMillis == 0 || position.loading() || playing.positionMillis < playing.seekSentMillis
                 || now - playing.seekSentMillis < REPORT_MILLIS) {
@@ -621,10 +549,6 @@ public final class TvPlayers {
         return TvVolume.distanceToBox(ear.x, ear.y, ear.z, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
     }
 
-    /**
-     * Hands the volume and whether the screen is in sight to our page, which applies them with the
-     * service player's own controls.
-     */
     private static void updateState(Playing playing, float volume, boolean visible) {
         if (Math.abs(volume - playing.volume) < 0.005f && visible == playing.visible
                 && ++playing.checksSinceStateSent < STATE_RESEND_INTERVAL) {
@@ -635,7 +559,6 @@ public final class TvPlayers {
 
     private static void sendState(Playing playing, float volume, boolean visible) {
         if (visible && !playing.visible) {
-            // Seen again: back in step at once, not after the page has first started loading where it was.
             playing.lastSeekSyncMillis = 0;
         }
         playing.volume = volume;
@@ -669,7 +592,6 @@ public final class TvPlayers {
             client = new MCEFClient(handle);
             client.addDisplayHandler(new StateReports());
             client.addLoadHandler(new CefLoadHandlerAdapter() {
-                // Our page itself didn't load (no internet, for one); aborted loads are our own cancels.
                 @Override
                 public void onLoadError(CefBrowser browser, CefFrame frame, ErrorCode errorCode, String errorText, String failedUrl) {
                     if (frame.isMain() && errorCode != ErrorCode.ERR_ABORTED) {

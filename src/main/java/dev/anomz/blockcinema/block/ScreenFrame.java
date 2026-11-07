@@ -11,19 +11,13 @@ import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.phys.Vec3;
 
 /**
- * Which way a TV's screen lies, seen by someone in front of it: {@code right} and {@code top} are the
- * steps from one TV of the screen to the next one to the viewer's right and up the picture, and
- * {@code normal} points out of the screen at the viewer. A wall, floor or ceiling TV steps one block
- * at a time; a diagonal TV steps one block on two axes, so each of its cells is {@link #cellWidth()} wide.
- *
- * @param modelX blockstate X rotation of the TV's model (its picture faces north, top up, before rotating)
- * @param modelY blockstate Y rotation of the model
- * @param diagonal the screen runs corner to corner, 45 degrees off the block grid
+ * Which way a TV's screen lies, seen by someone in front of it: {@code right} and {@code top} step to the next TV
+ * of the screen to the viewer's right and up the picture; {@code normal} points out of the screen at the viewer.
+ * {@code modelX} and {@code modelY} are the blockstate rotations of the model, whose picture faces north, top up.
  */
 public record ScreenFrame(Vec3i right, Vec3i top, Vec3 normal, int modelX, int modelY, boolean diagonal) {
     private static final double SQRT2 = Math.sqrt(2);
 
-    /** The frame of the TV in {@code state}, or null if it isn't a TV. */
     @Nullable
     public static ScreenFrame of(BlockState state) {
         if (state.getBlock() instanceof DiagonalTvBlock) {
@@ -35,7 +29,6 @@ public record ScreenFrame(Vec3i right, Vec3i top, Vec3 normal, int modelX, int m
         return null;
     }
 
-    /** A wall, floor or ceiling TV whose screen faces {@code front}, with the top of the picture at {@code top}. */
     public static ScreenFrame of(FrontAndTop orientation) {
         Direction front = orientation.front();
         Direction top = orientation.top();
@@ -82,12 +75,10 @@ public record ScreenFrame(Vec3i right, Vec3i top, Vec3 normal, int modelX, int m
         };
     }
 
-    /** How wide one TV of the screen is, in blocks. */
     public double cellWidth() {
         return diagonal ? SQRT2 : 1;
     }
 
-    /** How far the TV's screen surface is from the block's center, along {@link #normal}. */
     public double frontDistance() {
         return diagonal ? 0.05 : 0.5;
     }

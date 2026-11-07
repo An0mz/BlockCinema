@@ -9,7 +9,6 @@ import net.minecraft.network.chat.Component;
 public class TextField extends EditBox {
     private static final int INSET_X = 7;
 
-    /** {@code x, y, width, height}: the whole box, 20 high is usual. */
     public TextField(int x, int y, int width, int height, Component name) {
         super(Minecraft.getInstance().font, x + INSET_X, y + (height - 8) / 2, width - 2 * INSET_X, 8, name);
         setBordered(false);
@@ -24,7 +23,6 @@ public class TextField extends EditBox {
         super.renderWidget(g, mouseX, mouseY, partialTick);
     }
 
-    /** The whole box takes clicks, not just the line of text. */
     @Override
     public boolean isMouseOver(double mouseX, double mouseY) {
         return visible && mouseX >= getX() - INSET_X && mouseX < getX() + width + INSET_X
@@ -34,7 +32,6 @@ public class TextField extends EditBox {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (isMouseOver(mouseX, mouseY) && !super.isMouseOver(mouseX, mouseY)) {
-            // Clicked the box around the text: focus, with the cursor where it is.
             setFocused(true);
             return true;
         }

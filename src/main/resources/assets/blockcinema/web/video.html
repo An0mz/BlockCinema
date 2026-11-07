@@ -21,7 +21,6 @@
   // A Jellyfin login header, passed in the fragment so it is never sent anywhere but to that server.
   var fragment = new URLSearchParams(location.hash.slice(1));
   var auth = fragment.get('auth');
-  // Where to start, in seconds (resuming).
   var start = Number(fragment.get('start')) || 0;
   // Silent until the mod says how loud (it knows how far away the player is).
   var volume = 0;
@@ -34,7 +33,6 @@
     console.log('[blockcinema] video: ' + text);
   }
 
-  // Called by the mod a few times a second: volume 0 to 1 from the player's distance.
   window.blockcinemaState = function (newVolume, visible) {
     volume = newVolume;
     video.volume = Math.max(0, Math.min(1, volume));
@@ -71,12 +69,10 @@
     console.log('[blockcinema-ended]');
   }
 
-  // Called by the mod to jump to a time, in seconds.
   window.blockcinemaSeek = function (seconds) {
     video.currentTime = Math.max(0, seconds);
   };
 
-  // Called by the mod to play a little faster or slower for a while, to get back in step unnoticed.
   window.blockcinemaRate = function (rate) {
     video.playbackRate = rate;
   };

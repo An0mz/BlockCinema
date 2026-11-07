@@ -45,7 +45,6 @@ public final class BlockCinemaRegistries {
             BLOCK_ENTITY_TYPES.register("tv",
                     () -> BlockEntityType.Builder.of(TvBlockEntity::new, TV.get(), DIAGONAL_TV.get()).build(null));
 
-    /** Block Cinema's own creative tab, with everything the mod adds. */
     public static final DeferredHolder<CreativeModeTab, CreativeModeTab> TAB = CREATIVE_TABS.register("block_cinema",
             () -> CreativeModeTab.builder()
                     .title(Component.translatable("itemGroup." + BlockCinema.MODID))
@@ -57,7 +56,6 @@ public final class BlockCinemaRegistries {
                     })
                     .build());
 
-    /** The TV a remote opens. */
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<GlobalPos>> REMOTE_LINK =
             DATA_COMPONENTS.registerComponentType("remote_link",
                     builder -> builder.persistent(GlobalPos.CODEC).networkSynchronized(GlobalPos.STREAM_CODEC));
