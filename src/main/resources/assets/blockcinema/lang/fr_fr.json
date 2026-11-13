@@ -131,6 +131,7 @@
   "blockcinema.configuration.showVideoLinks": "Afficher les liens vidéo",
   "screen.blockcinema.no_services": "Tous les services sont masqués dans vos paramètres.",
   "screen.blockcinema.bad_format": "Les télés ne lisent pas les fichiers .%s. Utilisez MP4, WebM ou .m3u8, ou passez par Jellyfin",
+  "screen.blockcinema.other_service_off": "%s est désactivé sur ce serveur",
   "screen.blockcinema.saved": "Favoris et historique",
   "screen.blockcinema.saved_empty": "Les vidéos que vous lancez apparaissent ici ; l'étoile garde celles que vous aimez",
   "screen.blockcinema.favorite": "Favori",

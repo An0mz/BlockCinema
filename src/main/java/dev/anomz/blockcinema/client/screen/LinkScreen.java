@@ -8,6 +8,7 @@ import org.lwjgl.glfw.GLFW;
 import dev.anomz.blockcinema.BlockCinema;
 import dev.anomz.blockcinema.TvServerConfig;
 import dev.anomz.blockcinema.TvService;
+import dev.anomz.blockcinema.client.Agreements;
 import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.browser.VideoLinks;
 import dev.anomz.blockcinema.client.screen.ui.PanelScreen;
@@ -88,28 +89,46 @@ public final class LinkScreen extends PanelScreen {
         }
     }
 
-    private Optional<String> page() {
-        String format = service == TvService.DIRECT_LINK ? VideoLinks.unplayableFormat(linkText) : null;
-        Optional<String> page = format == null ? toPage.apply(linkText) : Optional.empty();
-        if (page.isEmpty()) {
-            error = format == null ? Component.translatable(key("bad_link." + service.id()))
-                    : Component.translatable(key("bad_format"), format);
-        }
-        return page;
-    }
-
     private void play() {
-        page().ifPresent(page -> {
-            TvRemote.play(screen, service, page);
-            minecraft.setScreen(null);
-        });
+        start(false);
     }
 
     private void enqueue() {
-        page().ifPresent(page -> {
-            TvRemote.enqueue(screen, service, page, VideoLinks.label(page));
+        start(true);
+    }
+
+    private void start(boolean queued) {
+        // A YouTube or Twitch link pasted as a video link is a web page, not a file: it goes to that service's player.
+        TvService site = service == TvService.DIRECT_LINK ? VideoLinks.siteOf(linkText) : null;
+        TvService target = site == null ? service : site;
+        if (!TvServerConfig.enabled(target)) {
+            error = Component.translatable(key("other_service_off"), Component.translatable(target.translationKey()));
+            return;
+        }
+        String format = target == TvService.DIRECT_LINK ? VideoLinks.unplayableFormat(linkText) : null;
+        Optional<String> found = format != null ? Optional.empty()
+                : site == TvService.YOUTUBE ? VideoLinks.youtube(linkText)
+                : site == TvService.TWITCH ? VideoLinks.twitch(linkText)
+                : toPage.apply(linkText);
+        if (found.isEmpty()) {
+            error = format == null ? Component.translatable(key("bad_link." + target.id()))
+                    : Component.translatable(key("bad_format"), format);
+            return;
+        }
+        String page = found.get();
+        Runnable send = () -> {
+            if (queued) {
+                TvRemote.enqueue(screen, target, page, VideoLinks.label(page));
+            } else {
+                TvRemote.play(screen, target, page);
+            }
             minecraft.setScreen(null);
-        });
+        };
+        if (target == TvService.YOUTUBE && !Agreements.youtube()) {
+            minecraft.setScreen(new AgreementScreen(this, send));
+        } else {
+            send.run();
+        }
     }
 
     @Override

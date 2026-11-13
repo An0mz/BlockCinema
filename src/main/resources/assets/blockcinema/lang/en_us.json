@@ -131,6 +131,7 @@
   "blockcinema.configuration.showVideoLinks": "Show Video Links",
   "screen.blockcinema.no_services": "Every service is hidden in your player settings.",
   "screen.blockcinema.bad_format": "TVs can't play .%s files. Use MP4, WebM or .m3u8, or play it from Jellyfin",
+  "screen.blockcinema.other_service_off": "%s is turned off on this server",
   "screen.blockcinema.saved": "Favorites & history",
   "screen.blockcinema.saved_empty": "Videos you play show up here; star the ones to keep",
   "screen.blockcinema.favorite": "Favorite",

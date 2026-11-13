@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 import org.jetbrains.annotations.Nullable;
 
 import dev.anomz.blockcinema.TvPageRules;
+import dev.anomz.blockcinema.TvService;
 
 /**
  * Turns what the player typed into one of our player pages. For YouTube and Twitch only video/playlist
@@ -113,6 +114,20 @@ public final class VideoLinks {
     public static String unplayableFile(String name) {
         String ending = name.substring(name.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
         return UNPLAYABLE_FORMATS.contains(ending) ? ending : null;
+    }
+
+    /**
+     * The service whose site a link points to, or null. Those are web pages, not video files, so they
+     * only play through that service's own player.
+     */
+    @Nullable
+    public static TvService siteOf(String input) {
+        URI uri = parse(input.trim());
+        String host = uri == null || uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+        if (host.equals("youtu.be") || YOUTUBE_HOSTS.contains(host)) {
+            return TvService.YOUTUBE;
+        }
+        return host.equals("clips.twitch.tv") || TWITCH_HOSTS.contains(host) ? TvService.TWITCH : null;
     }
 
     public static Optional<String> direct(String input) {

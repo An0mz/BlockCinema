@@ -9,6 +9,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 import dev.anomz.blockcinema.TvPageRules;
+import dev.anomz.blockcinema.TvService;
 
 class VideoLinksTest {
     private static final String YT = "https://blockcinema.anomz.dev/youtube.html?";
@@ -79,6 +80,16 @@ class VideoLinksTest {
         assertTrue(VideoLinks.direct("javascript:alert(1)").isEmpty());
         assertTrue(VideoLinks.direct("cdn.example.com/a.mp4").isEmpty());
         assertTrue(VideoLinks.direct("https://user:pass@example.com/a.mp4").isEmpty());
+    }
+
+    @Test
+    void linksToAServicesSiteAreRecognised() {
+        assertEquals(TvService.YOUTUBE, VideoLinks.siteOf(" https://www.youtube.com/watch?v=GON1Y9V5wB4 "));
+        assertEquals(TvService.YOUTUBE, VideoLinks.siteOf("https://youtu.be/GON1Y9V5wB4"));
+        assertEquals(TvService.TWITCH, VideoLinks.siteOf("https://www.twitch.tv/videos/123"));
+        assertEquals(TvService.TWITCH, VideoLinks.siteOf("https://clips.twitch.tv/SomeClip"));
+        assertNull(VideoLinks.siteOf("https://cdn.example.com/youtube.com/a.mp4"));
+        assertNull(VideoLinks.siteOf("not a link"));
     }
 
     @Test
