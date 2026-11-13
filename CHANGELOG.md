@@ -34,6 +34,8 @@ and versions follow [Semantic Versioning](https://semver.org/).
 - The Jellyfin login, watch positions and agreements are saved through a temporary file, so a crash while saving can't
   leave them damaged.
 - Failing to tell Jellyfin that a video started or stopped is now logged instead of being ignored.
+- A YouTube or Twitch link pasted into Video link no longer fails with "Can't play this video": it plays in that
+  service's own player.
 
 ## [0.1.1] - 2026-11-01
 
