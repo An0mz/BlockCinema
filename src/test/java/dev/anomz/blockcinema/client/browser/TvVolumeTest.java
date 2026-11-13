@@ -15,6 +15,17 @@ class TvVolumeTest {
     }
 
     @Test
+    void soundComesFromTheSideTheScreenIsOn() {
+        // Yaw 0 looks south (+z), so west (-x) is to the right.
+        assertEquals(0, TvVolume.pan(0, 10, 0), 1e-6);
+        assertEquals(TvVolume.MAX_PAN, TvVolume.pan(-10, 0, 0), 1e-6);
+        assertEquals(-TvVolume.MAX_PAN, TvVolume.pan(10, 0, 0), 1e-6);
+        assertEquals(-TvVolume.MAX_PAN, TvVolume.pan(0, 10, 90), 1e-6);
+        assertEquals(0, TvVolume.pan(0, 0, 0));
+        assertEquals(TvVolume.MAX_PAN / 2, TvVolume.pan(-TvVolume.FULL_DISTANCE / 2, 0, 0), 1e-6);
+    }
+
+    @Test
     void distanceIsToTheNearestPointOfTheScreen() {
         // A 4x2 wall from (0,0,0) to (4,2,1).
         assertEquals(0, TvVolume.distanceToBox(2, 1, 0.5, 0, 0, 0, 4, 2, 1));

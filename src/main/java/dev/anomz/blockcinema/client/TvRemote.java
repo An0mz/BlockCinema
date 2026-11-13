@@ -35,6 +35,7 @@ public final class TvRemote {
     }
 
     public static void play(BlockPos origin, TvService service, String page) {
+        SavedVideos.get().played(service, page);
         PacketDistributor.sendToServer(ChangeTvPayload.of(origin, service, page, TvPlayers.resumeSeconds(page)));
     }
 
@@ -67,6 +68,7 @@ public final class TvRemote {
     }
 
     public static void enqueue(BlockPos origin, TvService service, String page, String title) {
+        SavedVideos.get().played(service, page);
         PacketDistributor.sendToServer(ChangeTvPayload.queued(origin, service, page, title));
     }
 

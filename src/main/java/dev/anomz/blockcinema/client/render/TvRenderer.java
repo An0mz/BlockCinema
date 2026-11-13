@@ -137,6 +137,10 @@ public final class TvRenderer implements BlockEntityRenderer<TvBlockEntity> {
             String[] ids = TvPageRules.jellyfinIds(source.page());
             why = ids == null || !JellyfinWatch.canWatch(ids[0]) ? "jellyfin_card_log_in"
                     : JellyfinWatch.failed(source.page()) ? "jellyfin_card_no_access" : "jellyfin_card_loading";
+        } else if (source.service() == TvService.DIRECT_LINK && TvPageRules.localFile(source.page()) != null) {
+            text = Component.translatable("screen." + BlockCinema.MODID + ".local_card", source.ownerName(),
+                    TvPageRules.localFile(source.page()));
+            why = "local_card_missing";
         } else if (source.service() == TvService.YOUTUBE && !Agreements.youtube()) {
             text = Component.translatable(source.service().translationKey());
             why = "youtube_card_agree";

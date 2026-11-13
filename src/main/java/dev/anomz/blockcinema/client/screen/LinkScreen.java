@@ -6,6 +6,7 @@ import java.util.function.Function;
 import org.lwjgl.glfw.GLFW;
 
 import dev.anomz.blockcinema.BlockCinema;
+import dev.anomz.blockcinema.TvServerConfig;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.browser.VideoLinks;
@@ -21,6 +22,8 @@ import net.minecraft.network.chat.Component;
 
 /** Asks for a link (or ID) for one service and plays it on the screen. */
 public final class LinkScreen extends PanelScreen {
+    private static final int FILES_ROW = 26;
+
     private final BlockPos screen;
     private final TvService service;
     private final Function<String, Optional<String>> toPage;
@@ -47,7 +50,12 @@ public final class LinkScreen extends PanelScreen {
 
     @Override
     protected int panelHeight() {
-        return Ui.HEADER + Ui.PAD + 20 + 22 + 20 + Ui.PAD + 4;
+        return Ui.HEADER + Ui.PAD + 20 + 22 + 20 + Ui.PAD + 4 + (offersFiles() ? FILES_ROW : 0);
+    }
+
+    /** A video link can also be a file of the player's own, where the server allows those. */
+    private boolean offersFiles() {
+        return service == TvService.DIRECT_LINK && TvServerConfig.localFiles();
     }
 
     @Override
@@ -73,26 +81,35 @@ public final class LinkScreen extends PanelScreen {
             cancelX = x;
         }
         addRenderableWidget(new TextButton(cancelX, buttonY, 70, 20, CommonComponents.GUI_CANCEL, false, this::onClose));
+        if (offersFiles()) {
+            Component files = Component.translatable(key("my_files"));
+            addRenderableWidget(new TextButton(x, buttonY + FILES_ROW, font.width(files) + 16, 20, files, false,
+                    () -> minecraft.setScreen(new LocalFilesScreen(this, screen))));
+        }
+    }
+
+    private Optional<String> page() {
+        String format = service == TvService.DIRECT_LINK ? VideoLinks.unplayableFormat(linkText) : null;
+        Optional<String> page = format == null ? toPage.apply(linkText) : Optional.empty();
+        if (page.isEmpty()) {
+            error = format == null ? Component.translatable(key("bad_link." + service.id()))
+                    : Component.translatable(key("bad_format"), format);
+        }
+        return page;
     }
 
     private void play() {
-        Optional<String> page = toPage.apply(linkText);
-        if (page.isEmpty()) {
-            error = Component.translatable(key("bad_link." + service.id()));
-            return;
-        }
-        TvRemote.play(screen, service, page.get());
-        minecraft.setScreen(null);
+        page().ifPresent(page -> {
+            TvRemote.play(screen, service, page);
+            minecraft.setScreen(null);
+        });
     }
 
     private void enqueue() {
-        Optional<String> page = toPage.apply(linkText);
-        if (page.isEmpty()) {
-            error = Component.translatable(key("bad_link." + service.id()));
-            return;
-        }
-        TvRemote.enqueue(screen, service, page.get(), VideoLinks.label(page.get()));
-        minecraft.setScreen(null);
+        page().ifPresent(page -> {
+            TvRemote.enqueue(screen, service, page, VideoLinks.label(page));
+            minecraft.setScreen(null);
+        });
     }
 
     @Override

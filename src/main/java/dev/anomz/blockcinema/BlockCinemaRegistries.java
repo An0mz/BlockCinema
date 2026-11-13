@@ -15,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.MapColor;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredBlock;
@@ -33,10 +34,12 @@ public final class BlockCinemaRegistries {
             DeferredRegister.createDataComponents(Registries.DATA_COMPONENT_TYPE, BlockCinema.MODID);
 
     public static final DeferredBlock<TvBlock> TV = BLOCKS.register("tv", () -> new TvBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLACK).strength(1.0f).sound(SoundType.METAL)));
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLACK).strength(1.0f).sound(SoundType.METAL)
+                    .lightLevel(BlockCinemaRegistries::glow)));
     public static final DeferredItem<BlockItem> TV_ITEM = ITEMS.registerSimpleBlockItem("tv", TV);
     public static final DeferredBlock<DiagonalTvBlock> DIAGONAL_TV = BLOCKS.register("diagonal_tv", () -> new DiagonalTvBlock(
-            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLACK).strength(1.0f).sound(SoundType.METAL).noOcclusion()));
+            BlockBehaviour.Properties.of().mapColor(MapColor.COLOR_BLACK).strength(1.0f).sound(SoundType.METAL).noOcclusion()
+                    .lightLevel(BlockCinemaRegistries::glow)));
     public static final DeferredItem<BlockItem> DIAGONAL_TV_ITEM = ITEMS.registerSimpleBlockItem("diagonal_tv", DIAGONAL_TV);
     public static final DeferredItem<RemoteItem> REMOTE = ITEMS.register("remote",
             () -> new RemoteItem(new Item.Properties().stacksTo(1)));
@@ -61,6 +64,10 @@ public final class BlockCinemaRegistries {
                     builder -> builder.persistent(GlobalPos.CODEC).networkSynchronized(GlobalPos.STREAM_CODEC));
 
     private BlockCinemaRegistries() {
+    }
+
+    private static int glow(BlockState state) {
+        return state.getValue(TvBlock.LIT) ? TvBlock.GLOW : 0;
     }
 
     static void register(IEventBus modEventBus) {

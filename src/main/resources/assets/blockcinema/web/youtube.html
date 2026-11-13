@@ -80,9 +80,20 @@
     }
   }
 
+  // What the video is called, for the player's favorites and history: "[blockcinema-title] <title>".
+  var sentTitle = '';
+  function reportTitle() {
+    var data = player.getVideoData ? player.getVideoData() : null;
+    if (data && data.title && data.title !== sentTitle) {
+      sentTitle = data.title;
+      console.log('[blockcinema-title] ' + sentTitle);
+    }
+  }
+
   var played = false;
   function sendReport() {
     checkLive();
+    reportTitle();
     var state = player.getPlayerState();
     report(player.getCurrentTime(), live ? 0 : player.getDuration(),
         state !== YT.PlayerState.PLAYING && state !== YT.PlayerState.BUFFERING,

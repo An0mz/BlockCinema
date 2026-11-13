@@ -224,6 +224,31 @@ public final class BlockCinemaGameTests {
     }
 
     @GameTest(template = "empty")
+    public static void screensGlowWhileOn(GameTestHelper helper) {
+        wall(helper, 2, 1);
+        BlockPos left = new BlockPos(1, 1, 4);
+        BlockPos right = new BlockPos(2, 1, 4);
+        TvLayout layout = layoutAt(helper, left);
+        ServerPlayer player = viewer(helper);
+        ChangeTvPayload.apply(player, ChangeTvPayload.of(layout.origin(), TvService.YOUTUBE, YOUTUBE_A, 0));
+        helper.assertTrue(helper.getBlockState(left).getLightEmission() == TvBlock.GLOW
+                && helper.getBlockState(right).getLightEmission() == TvBlock.GLOW, "every TV of a screen that is on glows");
+
+        helper.setBlock(new BlockPos(3, 1, 4), helper.getBlockState(left).setValue(TvBlock.LIT, false));
+        TvLayout wider = layoutAt(helper, left);
+        boolean on = origin(helper, wider).source() != null;
+        helper.assertTrue(helper.getBlockState(new BlockPos(3, 1, 4)).getValue(TvBlock.LIT) == on
+                && helper.getBlockState(left).getValue(TvBlock.LIT) == on, "a TV added to a screen glows like the rest of it");
+
+        helper.setBlock(new BlockPos(3, 1, 4), Blocks.AIR);
+        next(player);
+        ControlTvPayload.apply(player, new ControlTvPayload(layout.origin(), ControlTvPayload.STOP, 0));
+        helper.assertTrue(!helper.getBlockState(left).getValue(TvBlock.LIT) && !helper.getBlockState(right).getValue(TvBlock.LIT),
+                "a screen turned off goes dark");
+        helper.succeed();
+    }
+
+    @GameTest(template = "empty")
     public static void redstonePausesAndResumes(GameTestHelper helper) {
         wall(helper, 1, 1);
         TvLayout layout = layoutAt(helper, new BlockPos(1, 1, 4));

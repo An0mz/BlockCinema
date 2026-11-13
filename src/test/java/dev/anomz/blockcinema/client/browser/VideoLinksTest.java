@@ -1,11 +1,14 @@
 package dev.anomz.blockcinema.client.browser;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+
+import dev.anomz.blockcinema.TvPageRules;
 
 class VideoLinksTest {
     private static final String YT = "https://blockcinema.anomz.dev/youtube.html?";
@@ -46,6 +49,27 @@ class VideoLinksTest {
     }
 
     @Test
+    void twitchVideosAndClips() {
+        String video = "https://blockcinema.anomz.dev/twitch.html?video=2345678901";
+        assertEquals(Optional.of(video), VideoLinks.twitch("https://www.twitch.tv/videos/2345678901?t=1h2m3s"));
+        assertTrue(VideoLinks.twitch("https://www.twitch.tv/videos/abc").isEmpty());
+        String clip = "https://blockcinema.anomz.dev/twitch.html?clip=TameClip-Name_123";
+        assertEquals(Optional.of(clip), VideoLinks.twitch("https://clips.twitch.tv/TameClip-Name_123"));
+        assertEquals(Optional.of(clip), VideoLinks.twitch("https://www.twitch.tv/some_channel/clip/TameClip-Name_123?filter=clips"));
+        assertTrue(VideoLinks.twitch("https://clips.evil.com/TameClip").isEmpty());
+        assertEquals("2345678901", VideoLinks.label(video));
+        assertEquals("TameClip-Name_123", VideoLinks.label(clip));
+    }
+
+    @Test
+    void formatsChromiumCantPlay() {
+        assertEquals("avi", VideoLinks.unplayableFormat(" https://cdn.example.com/films/Movie.AVI?x=1 "));
+        assertNull(VideoLinks.unplayableFormat("https://cdn.example.com/films/movie.mp4"));
+        assertNull(VideoLinks.unplayableFormat("https://cdn.example.com/avi"));
+        assertNull(VideoLinks.unplayableFormat("not a link"));
+    }
+
+    @Test
     void directLinksPlayOnTheVideoPageWithTheStreamsScheme() {
         assertEquals(Optional.of("https://blockcinema.anomz.dev/video.html?src=https%3A%2F%2Fcdn.example.com%2Fa%2520b.mp4"),
                 VideoLinks.direct(" https://cdn.example.com/a%20b.mp4 "));
@@ -68,6 +92,9 @@ class VideoLinksTest {
         assertEquals("dQw4w9WgXcQ", VideoLinks.label(VideoLinks.youtube("https://youtu.be/dQw4w9WgXcQ").orElseThrow()));
         assertEquals("some_channel", VideoLinks.label(VideoLinks.twitch("some_channel").orElseThrow()));
         assertEquals("movie night.mp4", VideoLinks.label(VideoLinks.direct("https://cdn.example.com/films/movie%20night.mp4").orElseThrow()));
+        assertEquals("my film.mp4", VideoLinks.label(TvPageRules.localFilePage("my film.mp4")));
+        assertEquals("avi", VideoLinks.unplayableFile("Old Film.AVI"));
+        assertNull(VideoLinks.unplayableFile("film.mp4"));
         assertEquals("", VideoLinks.label("jellyfin:0123456789abcdef0123456789abcdef:f27caa37e5142225cceded48f6553502"));
     }
 

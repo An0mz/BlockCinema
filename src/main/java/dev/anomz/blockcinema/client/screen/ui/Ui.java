@@ -28,7 +28,7 @@ public final class Ui {
     private static final ResourceLocation ICONS = ResourceLocation.fromNamespaceAndPath(BlockCinema.MODID, "textures/gui/icons.png");
     private static final int ICON_SOURCE = 32;
     private static final int ATLAS_COLUMNS = 8;
-    private static final int ATLAS_ROWS = 3;
+    private static final int ATLAS_ROWS = 4;
 
     private Ui() {
     }

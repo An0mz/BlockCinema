@@ -45,6 +45,11 @@ class TvPageRulesTest {
     void twitchAndLinkPages() {
         assertTrue(TvPageRules.valid(TvService.TWITCH, "https://blockcinema.anomz.dev/twitch.html?channel=some_channel"));
         assertFalse(TvPageRules.valid(TvService.TWITCH, "https://blockcinema.anomz.dev/twitch.html?channel=Bad%20Name"));
+        assertTrue(TvPageRules.valid(TvService.TWITCH, "https://blockcinema.anomz.dev/twitch.html?video=2345678901"));
+        assertFalse(TvPageRules.valid(TvService.TWITCH, "https://blockcinema.anomz.dev/twitch.html?video=12a"));
+        assertTrue(TvPageRules.valid(TvService.TWITCH, "https://blockcinema.anomz.dev/twitch.html?clip=TameClip-Name_123"));
+        assertFalse(TvPageRules.valid(TvService.TWITCH, "https://blockcinema.anomz.dev/twitch.html?clip=a%26b"));
+        assertFalse(TvPageRules.valid(TvService.TWITCH, "https://blockcinema.anomz.dev/twitch.html?channel=abc&clip=abc"));
         String link = "https://blockcinema.anomz.dev/video.html?src=https%3A%2F%2Fcdn.example.com%2Fa.mp4";
         assertTrue(TvPageRules.valid(TvService.DIRECT_LINK, link));
         assertEquals("cdn.example.com", TvPageRules.linkHost(link));
@@ -54,6 +59,23 @@ class TvPageRulesTest {
         assertFalse(TvPageRules.valid(TvService.DIRECT_LINK, "https://blockcinema.anomz.dev/video.html?src=file%3A%2F%2F%2Fc%3A%2Fa.mp4"));
         assertNull(TvPageRules.linkHost("https://blockcinema.anomz.dev/video.html"));
         assertFalse(TvPageRules.valid(TvService.JELLYFIN, link));
+    }
+
+    @Test
+    void ownFilesShareOnlyAName() {
+        String page = TvPageRules.localFilePage("My film & more.mp4");
+        assertEquals("http://blockcinema.anomz.dev/video.html?file=My+film+%26+more.mp4", page);
+        assertTrue(TvPageRules.valid(TvService.DIRECT_LINK, page));
+        assertEquals("My film & more.mp4", TvPageRules.localFile(page));
+        assertNull(TvPageRules.linkHost(page));
+        assertFalse(TvPageRules.valid(TvService.YOUTUBE, page));
+        assertNull(TvPageRules.localFile("https://blockcinema.anomz.dev/video.html?src=https%3A%2F%2Fcdn.example.com%2Fa.mp4"));
+        for (String bad : new String[] { "..%2Fa.mp4", "sub%2Fa.mp4", "C%3A%5Ca.mp4", "..", ".hidden", "a.mp4.", "", "a%00.mp4" }) {
+            String badPage = "http://blockcinema.anomz.dev/video.html?file=" + bad;
+            assertFalse(TvPageRules.valid(TvService.DIRECT_LINK, badPage), bad);
+            assertNull(TvPageRules.localFile(badPage), bad);
+        }
+        assertFalse(TvPageRules.valid(TvService.DIRECT_LINK, page + "&src=http%3A%2F%2F10.0.0.2%2Fa.mp4"));
     }
 
     @Test

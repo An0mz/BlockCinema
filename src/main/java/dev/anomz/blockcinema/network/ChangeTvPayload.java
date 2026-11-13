@@ -77,6 +77,10 @@ public record ChangeTvPayload(BlockPos origin, int service, String page, double 
         if (!TvPageRules.valid(service, page)) {
             return false;
         }
-        return service != TvService.DIRECT_LINK || TvServerConfig.linkHostAllowed(TvPageRules.linkHost(page));
+        if (service != TvService.DIRECT_LINK) {
+            return true;
+        }
+        return TvPageRules.localFile(page) != null ? TvServerConfig.localFiles()
+                : TvServerConfig.linkHostAllowed(TvPageRules.linkHost(page));
     }
 }

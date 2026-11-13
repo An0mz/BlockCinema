@@ -28,5 +28,6 @@ public enum Icon {
     DOWN,
     PHONE,
     WIDE,
-    EYE
+    EYE,
+    STAR
 }

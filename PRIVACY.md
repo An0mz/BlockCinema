@@ -28,6 +28,9 @@ TVs only connect to the service you or another player picked:
 - **Twitch**: Twitch's official embedded player, under the [Twitch Privacy Notice](https://www.twitch.tv/p/legal/privacy-notice/).
 - **Jellyfin**: your own Jellyfin server (or one you have an account on), at the address you enter.
 - **Video links**: the website the link points to.
+- **Your own video files** (the `blockcinema-videos` folder): nothing is connected to. Only the file's name is
+  shared with the Minecraft server and nearby players; the file itself never leaves your computer. Your game
+  hands it to its own browser over an address that only works on your computer and only for files in that folder.
 
 Each of them sees the requests your game makes to it, like any website you visit.
 
@@ -37,6 +40,8 @@ Each of them sees the requests your game makes to it, like any website you visit
   The token is never sent to the Minecraft server or other players; a Jellyfin TV only shares the
   server's ID and the video's ID.
 - `config/blockcinema/positions.json`: where you stopped YouTube videos and video links, to resume them.
+- `config/blockcinema/saved.json`: your favorites and the last 50 videos you put on a TV (not Jellyfin), with
+  their names. "Clear history" in the TV menu empties the history.
 - `config/blockcinema/agreements.json`: whether you agreed to YouTube's terms.
 - The browser's cache and cookies, kept by MCEF (the mod that provides the browser) in its own folder.
 

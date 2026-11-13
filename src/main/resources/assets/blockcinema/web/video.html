@@ -33,10 +33,27 @@
     console.log('[blockcinema] video: ' + text);
   }
 
-  window.blockcinemaState = function (newVolume, visible) {
+  window.blockcinemaState = function (newVolume, visible, pan) {
     volume = newVolume;
     video.volume = Math.max(0, Math.min(1, volume));
+    setPan(pan || 0);
   };
+
+  // Left or right, for a player who turned directional sound on. The sound only goes through the panner
+  // from the first time it is asked to be off-center.
+  var panner = null;
+  function setPan(pan) {
+    if (!panner) {
+      if (!pan) {
+        return;
+      }
+      var context = new AudioContext();
+      panner = context.createStereoPanner();
+      context.createMediaElementSource(video).connect(panner).connect(context.destination);
+      context.resume();
+    }
+    panner.pan.value = Math.max(-1, Math.min(1, pan));
+  }
 
   // Where the video is, once a second, for the mod's time bar and resume (read from the browser console):
   // "[blockcinema-state] <seconds> <length in seconds, 0 if live or unknown> <1 if paused> <1 if loading>".

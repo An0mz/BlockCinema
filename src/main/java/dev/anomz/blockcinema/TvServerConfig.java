@@ -27,10 +27,18 @@ public final class TvServerConfig {
                     "like [\"example.com\", \"cdn.example.org\"].")
             .defineListAllowEmpty("directLinkHosts", List.of(), () -> "example.com",
                     host -> host instanceof String text && !text.isBlank());
+    private static final ModConfigSpec.BooleanValue LOCAL_FILES = BUILDER
+            .comment("Allow players to play video files from their own computer (their blockcinema-videos folder).",
+                    "Only the file's name is shared: players who have a file of that name watch along, others see its name.",
+                    "Needs enableDirectLinks.")
+            .define("enableLocalFiles", true);
     private static final ModConfigSpec.BooleanValue ANYONE_CAN_CONTROL = BUILDER
             .comment("Let any player change or control what a TV plays. If false, only the player who started it",
                     "and operators can.")
             .define("anyoneCanControl", true);
+    private static final ModConfigSpec.BooleanValue SCREEN_GLOW = BUILDER
+            .comment("TVs give off light while something is on. A change shows the next time a screen starts or stops.")
+            .define("screenGlow", true);
 
     static final ModConfigSpec SPEC = BUILDER.build();
 
@@ -52,6 +60,14 @@ public final class TvServerConfig {
     public static boolean linkHostAllowed(String host) {
         List<? extends String> hosts = SPEC.isLoaded() ? DIRECT_LINK_HOSTS.get() : List.of();
         return TvPageRules.hostAllowed(hosts, host);
+    }
+
+    public static boolean localFiles() {
+        return !SPEC.isLoaded() || LOCAL_FILES.get();
+    }
+
+    public static boolean screenGlow() {
+        return !SPEC.isLoaded() || SCREEN_GLOW.get();
     }
 
     public static boolean anyoneCanControl() {

@@ -8,6 +8,7 @@ import org.cef.CefSettings;
 import org.cef.browser.CefBrowser;
 import org.cef.handler.CefDisplayHandlerAdapter;
 
+import dev.anomz.blockcinema.TvQueueEntry;
 import net.minecraft.client.Minecraft;
 
 /**
@@ -19,6 +20,7 @@ final class StateReports extends CefDisplayHandlerAdapter {
     static final String ERROR_PREFIX = "[blockcinema-error] ";
     static final String ENDED = "[blockcinema-ended]";
     static final String LIST_PREFIX = "[blockcinema-list] ";
+    static final String TITLE_PREFIX = "[blockcinema-title] ";
 
     static int parseNumber(String message, String prefix) {
         if (!message.startsWith(prefix)) {
@@ -85,6 +87,13 @@ final class StateReports extends CefDisplayHandlerAdapter {
         int listIndex = parseNumber(message, LIST_PREFIX);
         if (listIndex >= 0) {
             Minecraft.getInstance().execute(() -> TvPlayers.reportListIndex(browser, listIndex));
+            return true;
+        }
+        if (message.startsWith(TITLE_PREFIX)) {
+            String title = TvQueueEntry.cleanTitle(message.substring(TITLE_PREFIX.length()));
+            if (!title.isEmpty()) {
+                Minecraft.getInstance().execute(() -> TvPlayers.reportTitle(browser, title));
+            }
             return true;
         }
         String error = parseError(message);

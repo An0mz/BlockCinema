@@ -39,7 +39,7 @@ public class DiagonalTvBlock extends BaseEntityBlock {
         super(properties);
         registerDefaultState(stateDefinition.any().setValue(HorizontalDirectionalBlock.FACING, Direction.NORTH)
                 .setValue(TvBlock.UP, false).setValue(TvBlock.DOWN, false)
-                .setValue(TvBlock.LEFT, false).setValue(TvBlock.RIGHT, false));
+                .setValue(TvBlock.LEFT, false).setValue(TvBlock.RIGHT, false).setValue(TvBlock.LIT, false));
     }
 
     @Override
@@ -49,7 +49,7 @@ public class DiagonalTvBlock extends BaseEntityBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(HorizontalDirectionalBlock.FACING, TvBlock.UP, TvBlock.DOWN, TvBlock.LEFT, TvBlock.RIGHT);
+        builder.add(HorizontalDirectionalBlock.FACING, TvBlock.UP, TvBlock.DOWN, TvBlock.LEFT, TvBlock.RIGHT, TvBlock.LIT);
     }
 
     @Override
@@ -74,6 +74,9 @@ public class DiagonalTvBlock extends BaseEntityBlock {
     protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
         super.onPlace(state, level, pos, oldState, movedByPiston);
         refreshSides(level, pos, state);
+        if (!oldState.is(this)) {
+            TvBlockEntity.updateGlowAround(level, pos, state);
+        }
     }
 
     @Override
@@ -81,6 +84,7 @@ public class DiagonalTvBlock extends BaseEntityBlock {
         super.onRemove(state, level, pos, newState, movedByPiston);
         if (!state.is(newState.getBlock())) {
             refreshSides(level, pos, state);
+            TvBlockEntity.updateGlowAround(level, pos, state);
         }
     }
 

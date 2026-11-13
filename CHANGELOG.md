@@ -3,10 +3,30 @@
 All notable changes to Block Cinema. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and versions follow [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] - 2026-11-12
+
+### Added
+
+- **Twitch past videos and clips**: paste a `twitch.tv/videos/...` or clip link. Past videos seek, resume and stay
+  in step; clips play in Twitch's clip player, which is heard at its own volume or not at all and can't be paused.
+- **Favorites and history**: the star in the TV menu lists your favorites and the last videos you played, to play
+  or queue them again. YouTube videos show their name there.
+- **Screen glow**: TVs give off light while something is on (`screenGlow` in the server settings).
+- **Directional sound**, as a player setting (`directionalSound`, off by default): video links and Jellyfin are
+  heard from the side the TV is on.
+- **Your own video files**: videos in the `blockcinema-videos` folder of the game folder play from Video link >
+  My video files. Only the file's name is shared: players who have a file of that name watch along in step, others
+  see who is playing what. Server owners can turn it off with `enableLocalFiles`.
+- **Keep playing out of sight**, as a player setting (`keepPlayingOutOfSight`, off by default): TVs keep playing
+  when you look away or walk far from them, as long as their area is loaded. YouTube TVs still pause out of sight.
+- Links to AVI, WMV, FLV and MPEG files are refused with a message saying what plays instead, and a video in a
+  format that can't be played says so on the TV.
 
 ### Changed
 
+- The volume you set on a TV is remembered: TVs start at it the next time they play, also after restarting the game
+  (`startVolume` follows it). Muting isn't remembered.
+- Clients and servers must both update: TVs have a new "lit" state and Twitch links a new form.
 - Screens made of many TVs spread their layout checks over several ticks instead of all running on the same one.
 
 ### Fixed

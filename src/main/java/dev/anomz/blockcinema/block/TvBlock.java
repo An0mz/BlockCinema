@@ -31,11 +31,13 @@ public class TvBlock extends BaseEntityBlock {
     public static final BooleanProperty DOWN = BooleanProperty.create("down");
     public static final BooleanProperty LEFT = BooleanProperty.create("left");
     public static final BooleanProperty RIGHT = BooleanProperty.create("right");
+    public static final BooleanProperty LIT = BlockStateProperties.LIT;
+    public static final int GLOW = 10;
 
     public TvBlock(Properties properties) {
         super(properties);
         registerDefaultState(stateDefinition.any().setValue(BlockStateProperties.ORIENTATION, FrontAndTop.NORTH_UP)
-                .setValue(UP, false).setValue(DOWN, false).setValue(LEFT, false).setValue(RIGHT, false));
+                .setValue(UP, false).setValue(DOWN, false).setValue(LEFT, false).setValue(RIGHT, false).setValue(LIT, false));
     }
 
     @Override
@@ -45,7 +47,7 @@ public class TvBlock extends BaseEntityBlock {
 
     @Override
     protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder) {
-        builder.add(BlockStateProperties.ORIENTATION, UP, DOWN, LEFT, RIGHT);
+        builder.add(BlockStateProperties.ORIENTATION, UP, DOWN, LEFT, RIGHT, LIT);
     }
 
     /**
@@ -93,6 +95,22 @@ public class TvBlock extends BaseEntityBlock {
 
     private static boolean continues(BlockGetter level, BlockPos pos, BlockState state, ScreenFrame frame) {
         return TvLayout.sameScreen(level.getBlockState(pos), state, frame);
+    }
+
+    @Override
+    protected void onPlace(BlockState state, Level level, BlockPos pos, BlockState oldState, boolean movedByPiston) {
+        super.onPlace(state, level, pos, oldState, movedByPiston);
+        if (!oldState.is(this)) {
+            TvBlockEntity.updateGlowAround(level, pos, state);
+        }
+    }
+
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean movedByPiston) {
+        super.onRemove(state, level, pos, newState, movedByPiston);
+        if (!newState.is(this)) {
+            TvBlockEntity.updateGlowAround(level, pos, state);
+        }
     }
 
     @Override

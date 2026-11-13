@@ -27,6 +27,7 @@ import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.client.Agreements;
 import dev.anomz.blockcinema.client.BlockCinemaClientConfig;
+import dev.anomz.blockcinema.client.SavedVideos;
 import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.jellyfin.JellyfinWatch;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
@@ -61,7 +62,8 @@ public final class TvPlayers {
     private static final int STATE_RESEND_INTERVAL = 8;
     /**
      * A screen not seen from the front for this long counts as out of sight. YouTube's terms don't allow
-     * playing in a player the user can't see, so our YouTube page pauses until it is seen again.
+     * playing in a player the user can't see, so our YouTube page pauses until it is seen again, even
+     * with {@link BlockCinemaClientConfig#keepPlayingOutOfSight} on (which lifts {@link #MAX_DISTANCE}).
      */
     private static final long OUT_OF_SIGHT_MILLIS = 3000;
     private static final long REPORT_MILLIS = 1100;
@@ -127,6 +129,7 @@ public final class TvPlayers {
         /** Last volume sent to the page; -1 sends it again. */
         float volume = -1;
         boolean visible = true;
+        float pan;
         int checksSinceStateSent;
         /** Written by the renderer, read by the tick; both on the client thread. */
         long lastSeenMillis = Util.getMillis();
@@ -176,6 +179,8 @@ public final class TvPlayers {
         PLAYING.values().forEach(TvPlayers::close);
         PLAYING.clear();
         JellyfinWatch.clear();
+        LocalVideos.stop();
+        BlockCinemaClientConfig.saveVolume(true);
     }
 
     @Nullable
@@ -228,6 +233,14 @@ public final class TvPlayers {
         return playing != null && playing.portrait;
     }
 
+    static void reportTitle(CefBrowser browser, String title) {
+        for (Playing playing : PLAYING.values()) {
+            if (playing.browser == browser) {
+                SavedVideos.get().rename(playing.key, title);
+            }
+        }
+    }
+
     static void reportError(CefBrowser browser, @Nullable String code) {
         for (Playing playing : PLAYING.values()) {
             if (playing.browser == browser) {
@@ -255,6 +268,7 @@ public final class TvPlayers {
         Playing playing = PLAYING.get(origin.asLong());
         if (playing != null) {
             playing.userVolume = Math.max(0, Math.min(1, volume));
+            BlockCinemaClientConfig.rememberVolume(playing.userVolume);
             sendState(playing, playing.worldGain * playing.userVolume, playing.visible);
         }
     }
@@ -285,6 +299,7 @@ public final class TvPlayers {
 
     public static void tick(ClientLevel level, Player player) {
         long now = Util.getMillis();
+        BlockCinemaClientConfig.saveVolume(false);
         boolean gamePaused = Minecraft.getInstance().isPaused();
         if (gamePaused != TvPlayers.gamePaused) {
             TvPlayers.gamePaused = gamePaused;
@@ -314,11 +329,12 @@ public final class TvPlayers {
 
     private static List<Candidate> candidates(ClientLevel level, Player player) {
         List<Candidate> candidates = new ArrayList<>();
+        double maxDistanceSqr = BlockCinemaClientConfig.keepPlayingOutOfSight() ? Double.MAX_VALUE : MAX_DISTANCE * MAX_DISTANCE;
         for (TvBlockEntity tv : new ArrayList<>(TvBlockEntity.CLIENT_PLAYING)) {
             TvSource source = tv.source();
             BlockPos origin = tv.getBlockPos();
             double distanceSqr = origin.distToCenterSqr(player.position());
-            if (source == null || tv.isRemoved() || tv.getLevel() != level || distanceSqr > MAX_DISTANCE * MAX_DISTANCE) {
+            if (source == null || tv.isRemoved() || tv.getLevel() != level || distanceSqr > maxDistanceSqr) {
                 continue;
             }
             TvLayout layout = tv.layout(level.getGameTime());
@@ -408,6 +424,15 @@ public final class TvPlayers {
                 resumeKey = null;
                 onStop = stream.onStop();
             }
+            String file = source.service() == TvService.DIRECT_LINK ? TvPageRules.localFile(key) : null;
+            if (file != null) {
+                // A file of the players' own: played from this player's videos folder, if it is there too.
+                String url = LocalVideos.url(file);
+                if (url == null) {
+                    return;
+                }
+                page = VideoLinks.videoPage(url, null);
+            }
             playing = start(origin, playing, withStart(page, source.position(clockTicks)), key, resumeKey, onStop);
         }
         wanted.add(origin.asLong());
@@ -425,7 +450,8 @@ public final class TvPlayers {
             playing.browser.resize(portrait ? height : width, portrait ? width : height);
         }
         syncState(playing, source, clockTicks, now);
-        updateVolume(playing, layout, player, now);
+        updateVolume(playing, layout, player, now,
+                source.service() != TvService.YOUTUBE && BlockCinemaClientConfig.keepPlayingOutOfSight());
         updateCaptions(playing);
     }
 
@@ -531,7 +557,7 @@ public final class TvPlayers {
         playing.seekSentMillis = 0;
     }
 
-    private static void updateVolume(Playing playing, TvLayout layout, Player player, long now) {
+    private static void updateVolume(Playing playing, TvLayout layout, Player player, long now, boolean playsUnseen) {
         if (!playing.pageHeard && playing.position != null) {
             // The page is up now: what was sent while it loaded was lost (it starts silent meanwhile).
             playing.pageHeard = true;
@@ -540,8 +566,11 @@ public final class TvPlayers {
         Options options = Minecraft.getInstance().options;
         float gain = options.getSoundSourceVolume(SoundSource.MASTER) * options.getSoundSourceVolume(SoundSource.RECORDS);
         playing.worldGain = gain * (playing.fullscreen ? 1 : TvVolume.falloff(distance(layout, player.getEyePosition())));
+        Vec3 toScreen = layout.bounds().getCenter().subtract(player.getEyePosition());
+        float pan = playing.fullscreen || !BlockCinemaClientConfig.directionalSound() ? 0
+                : TvVolume.pan(toScreen.x, toScreen.z, player.getYRot());
         updateState(playing, playing.worldGain * playing.userVolume,
-                playing.fullscreen || now - playing.lastSeenMillis < OUT_OF_SIGHT_MILLIS);
+                playing.fullscreen || playsUnseen || now - playing.lastSeenMillis < OUT_OF_SIGHT_MILLIS, pan);
     }
 
     private static double distance(TvLayout layout, Vec3 ear) {
@@ -549,11 +578,12 @@ public final class TvPlayers {
         return TvVolume.distanceToBox(ear.x, ear.y, ear.z, box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
     }
 
-    private static void updateState(Playing playing, float volume, boolean visible) {
-        if (Math.abs(volume - playing.volume) < 0.005f && visible == playing.visible
+    private static void updateState(Playing playing, float volume, boolean visible, float pan) {
+        if (Math.abs(volume - playing.volume) < 0.005f && visible == playing.visible && Math.abs(pan - playing.pan) < 0.02f
                 && ++playing.checksSinceStateSent < STATE_RESEND_INTERVAL) {
             return;
         }
+        playing.pan = pan;
         sendState(playing, volume, visible);
     }
 
@@ -564,7 +594,8 @@ public final class TvPlayers {
         playing.volume = volume;
         playing.visible = visible;
         playing.checksSinceStateSent = 0;
-        run(playing, String.format(Locale.ROOT, "window.blockcinemaState && blockcinemaState(%.3f, %b)", volume, visible));
+        run(playing, String.format(Locale.ROOT, "window.blockcinemaState && blockcinemaState(%.3f, %b, %.2f)", volume, visible,
+                playing.pan));
     }
 
     private static void run(Playing playing, String script) {

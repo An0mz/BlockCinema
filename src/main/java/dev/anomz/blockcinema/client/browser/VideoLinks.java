@@ -27,6 +27,7 @@ public final class VideoLinks {
             "music.youtube.com", "youtube-nocookie.com", "www.youtube-nocookie.com");
     private static final int MAX_LINK_LENGTH = 2048;
     private static final Set<String> TWITCH_HOSTS = Set.of("twitch.tv", "www.twitch.tv", "m.twitch.tv");
+    private static final Set<String> UNPLAYABLE_FORMATS = Set.of("avi", "wmv", "flv", "mpg", "mpeg", "vob", "rm", "rmvb");
 
     private VideoLinks() {
     }
@@ -70,18 +71,48 @@ public final class VideoLinks {
 
     public static Optional<String> twitch(String input) {
         String text = input.trim();
-        String channel = text;
+        String kind = "channel";
+        Pattern allowed = TWITCH_CHANNEL;
+        String value = text;
         if (!TWITCH_CHANNEL.matcher(text).matches()) {
             URI uri = parse(text);
-            if (uri == null || uri.getHost() == null || !TWITCH_HOSTS.contains(uri.getHost().toLowerCase(Locale.ROOT))) {
+            String host = uri == null || uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
+            String path = uri == null || uri.getPath() == null ? "" : uri.getPath();
+            boolean clipHost = host.equals("clips.twitch.tv");
+            if (!clipHost && !TWITCH_HOSTS.contains(host)) {
                 return Optional.empty();
             }
-            channel = firstSegment(uri.getPath() == null ? "" : uri.getPath());
-            if (channel == null || !TWITCH_CHANNEL.matcher(channel).matches()) {
-                return Optional.empty();
+            int clip = clipHost ? 0 : path.indexOf("/clip/");
+            if (clip >= 0) {
+                kind = "clip";
+                allowed = TvPageRules.TWITCH_CLIP;
+                value = firstSegment(path.substring(clipHost ? 0 : clip + 5));
+            } else if (path.startsWith("/videos/")) {
+                kind = "video";
+                allowed = TvPageRules.TWITCH_VIDEO;
+                value = afterPrefix(path, "/videos/");
+            } else {
+                value = firstSegment(path);
             }
         }
-        return Optional.of(TvPages.ORIGIN + "/twitch.html?channel=" + channel.toLowerCase(Locale.ROOT));
+        if (value == null || !allowed.matcher(value).matches()) {
+            return Optional.empty();
+        }
+        return Optional.of(TvPages.ORIGIN + "/twitch.html?" + kind + "=" + (kind.equals("channel") ? value.toLowerCase(Locale.ROOT) : value));
+    }
+
+    /** The file ending of a link Chromium has no player for (like "avi"), or null. */
+    @Nullable
+    public static String unplayableFormat(String input) {
+        URI uri = parse(input.trim());
+        return unplayableFile(uri == null || uri.getPath() == null ? "" : uri.getPath());
+    }
+
+    /** The same for a file's name or path. */
+    @Nullable
+    public static String unplayableFile(String name) {
+        String ending = name.substring(name.lastIndexOf('.') + 1).toLowerCase(Locale.ROOT);
+        return UNPLAYABLE_FORMATS.contains(ending) ? ending : null;
     }
 
     public static Optional<String> direct(String input) {
@@ -109,11 +140,15 @@ public final class VideoLinks {
     }
 
     public static String label(String page) {
+        String ownFile = TvPageRules.localFile(page);
+        if (ownFile != null) {
+            return ownFile;
+        }
         URI uri = parse(page);
         if (uri == null || uri.getRawQuery() == null) {
             return "";
         }
-        for (String name : new String[] { "v", "list", "channel" }) {
+        for (String name : new String[] { "v", "list", "channel", "video", "clip" }) {
             String value = query(uri, name);
             if (value != null) {
                 return value;

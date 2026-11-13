@@ -13,6 +13,7 @@ import dev.anomz.blockcinema.block.TvBlockEntity;
 import dev.anomz.blockcinema.block.TvLayout;
 import dev.anomz.blockcinema.client.Agreements;
 import dev.anomz.blockcinema.client.BlockCinemaClientConfig;
+import dev.anomz.blockcinema.client.SavedVideos;
 import dev.anomz.blockcinema.client.TvRemote;
 import dev.anomz.blockcinema.client.browser.TvPlayers;
 import dev.anomz.blockcinema.client.browser.VideoLinks;
@@ -105,6 +106,15 @@ public final class TvScreen extends PanelScreen {
             addRenderableWidget(new IconButton(headerX, headerY, iconSize, Icon.EYE, Component.translatable(key("watch_here")),
                     IconButton.Style.GHOST, () -> minecraft.setScreen(new TvWatchScreen(screen))));
         }
+        headerX -= iconSize + 4;
+        addRenderableWidget(new IconButton(headerX, headerY, iconSize, Icon.STAR, Component.translatable(key("saved")),
+                IconButton.Style.GHOST, () -> {
+                    if (TvPlayers.ready()) {
+                        minecraft.setScreen(new SavedScreen(this, screen));
+                    } else {
+                        status = Component.translatable(key("browser_not_ready"));
+                    }
+                }));
         int x = contentLeft();
         int w = contentWidth();
         int y = contentTop();
@@ -162,7 +172,7 @@ public final class TvScreen extends PanelScreen {
         }
     }
 
-    private static Icon icon(TvService service) {
+    static Icon icon(TvService service) {
         return switch (service) {
             case YOUTUBE -> Icon.VIDEO;
             case TWITCH -> Icon.LIVE;
@@ -188,6 +198,20 @@ public final class TvScreen extends PanelScreen {
                 Component.translatable(key("previous_video")), IconButton.Style.GHOST, () -> skipVideo(-1)));
         addRenderableWidget(new IconButton(mid + 12 + 6 + 20 + 4, rowY + 2, 20, Icon.NEXT,
                 Component.translatable(key("next_video")), IconButton.Style.GHOST, () -> skipVideo(1)));
+        TvSource source = TvRemote.source(screen);
+        if (source != null && source.service() != TvService.JELLYFIN) {
+            addRenderableWidget(new IconButton(x + w - 6 - 20 - 4 - 20 - 4 - 20, rowY + 2, 20, Icon.STAR,
+                    Component.translatable(key("favorite")), IconButton.Style.GHOST,
+                    () -> SavedVideos.get().toggleFavorite(source.service(), source.page())) {
+                @Override
+                protected void renderWidget(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+                    super.renderWidget(g, mouseX, mouseY, partialTick);
+                    if (SavedVideos.get().isFavorite(source.page())) {
+                        Ui.icon(g, Icon.STAR, getX() + 4, getY() + 4, 12, Ui.ACCENT_HOVER);
+                    }
+                }
+            });
+        }
         IconButton fullscreen = addRenderableWidget(new IconButton(x + w - 6 - 20 - 4 - 20, rowY + 2, 20, Icon.FULLSCREEN,
                 Component.translatable(key("fullscreen")), IconButton.Style.GHOST, () -> minecraft.setScreen(new TvFullscreenScreen(this, screen))));
         fullscreen.active = TvPlayers.isPlaying(screen);

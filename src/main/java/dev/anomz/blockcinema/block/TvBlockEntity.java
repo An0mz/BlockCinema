@@ -15,6 +15,7 @@ import dev.anomz.blockcinema.BlockCinemaRegistries;
 import dev.anomz.blockcinema.TvClock;
 import dev.anomz.blockcinema.TvPageRules;
 import dev.anomz.blockcinema.TvQueueEntry;
+import dev.anomz.blockcinema.TvServerConfig;
 import dev.anomz.blockcinema.TvService;
 import dev.anomz.blockcinema.TvSource;
 import net.minecraft.core.BlockPos;
@@ -26,6 +27,7 @@ import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
@@ -152,6 +154,40 @@ public class TvBlockEntity extends BlockEntity {
         setChanged();
         if (level != null && !level.isClientSide) {
             level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+            updateGlow(level, worldPosition);
+        }
+    }
+
+    /** Server side: every TV of the screen at {@code pos} glows while the screen has something on. */
+    private static void updateGlow(Level level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        ScreenFrame frame = ScreenFrame.of(state);
+        if (frame == null) {
+            return;
+        }
+        TvLayout layout = TvLayout.of(level, pos, state);
+        boolean lit = !layout.invalid() && TvServerConfig.screenGlow()
+                && level.getBlockEntity(layout.origin()) instanceof TvBlockEntity origin && origin.source != null;
+        for (int r = 0; r < layout.rows(); r++) {
+            for (int c = 0; c < layout.cols(); c++) {
+                BlockPos cell = layout.cell(c, r);
+                BlockState cellState = level.getBlockState(cell);
+                if (TvLayout.sameScreen(cellState, state, frame) && cellState.getValue(TvBlock.LIT) != lit) {
+                    level.setBlock(cell, cellState.setValue(TvBlock.LIT, lit), Block.UPDATE_CLIENTS);
+                }
+            }
+        }
+    }
+
+    /** Server side: a TV was placed or broken at {@code pos}, which changes the screens of the TVs beside it. */
+    static void updateGlowAround(Level level, BlockPos pos, BlockState state) {
+        ScreenFrame frame = ScreenFrame.of(state);
+        if (level.isClientSide || frame == null) {
+            return;
+        }
+        for (BlockPos near : new BlockPos[] { pos, pos.offset(frame.right()), pos.subtract(frame.right()),
+                pos.offset(frame.top()), pos.subtract(frame.top()) }) {
+            updateGlow(level, near);
         }
     }
 

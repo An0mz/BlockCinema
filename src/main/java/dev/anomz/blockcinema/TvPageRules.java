@@ -3,6 +3,7 @@ package dev.anomz.blockcinema;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
@@ -30,10 +31,13 @@ public final class TvPageRules {
     private static final Pattern LIST_INDEX = Pattern.compile("\\d{1,4}");
     public static final int MAX_LIST_INDEX = 9999;
     private static final Pattern TWITCH_CHANNEL = Pattern.compile("[a-z0-9_]{1,25}");
+    public static final Pattern TWITCH_VIDEO = Pattern.compile("[0-9]{1,12}");
+    public static final Pattern TWITCH_CLIP = Pattern.compile("[A-Za-z0-9_-]{1,100}");
     private static final Pattern JELLYFIN_ID = Pattern.compile("[0-9a-f]{32}");
     private static final String JELLYFIN_PREFIX = "jellyfin:";
     /** A Jellyfin stream index, or -1 (audio: the default track; subtitles: none). */
     private static final Pattern JELLYFIN_TRACK = Pattern.compile("-1|\\d{1,3}");
+    private static final Pattern LOCAL_FILE = Pattern.compile("[^/\\\\:*?\"<>|\\p{Cntrl}]{1,200}");
 
     private TvPageRules() {
     }
@@ -62,9 +66,12 @@ public final class TvPageRules {
         return switch (service) {
             case YOUTUBE -> "https".equals(scheme) && "/youtube.html".equals(uri.getRawPath()) && youtubeQuery(query);
             case TWITCH -> "https".equals(scheme) && "/twitch.html".equals(uri.getRawPath()) && query.size() == 1
-                    && TWITCH_CHANNEL.matcher(query.getOrDefault("channel", "")).matches();
+                    && (TWITCH_CHANNEL.matcher(query.getOrDefault("channel", "")).matches()
+                            || TWITCH_VIDEO.matcher(query.getOrDefault("video", "")).matches()
+                            || TWITCH_CLIP.matcher(query.getOrDefault("clip", "")).matches());
             case DIRECT_LINK -> "/video.html".equals(uri.getRawPath()) && query.size() == 1
-                    && videoSource(query.get("src"), scheme) != null;
+                    && (videoSource(query.get("src"), scheme) != null
+                            || "http".equals(scheme) && localFileName(query.getOrDefault("file", "")));
             case JELLYFIN -> false;
         };
     }
@@ -93,6 +100,35 @@ public final class TvPageRules {
         boolean tracks = ids.length == 4 && JELLYFIN_TRACK.matcher(ids[2]).matches() && JELLYFIN_TRACK.matcher(ids[3]).matches();
         return (ids.length == 2 || tracks) && JELLYFIN_ID.matcher(ids[0]).matches() && JELLYFIN_ID.matcher(ids[1]).matches()
                 ? ids : null;
+    }
+
+    /**
+     * Whether {@code name} can be a video in a player's own videos folder: a plain file name, so a page
+     * can never point anywhere else on a player's computer.
+     */
+    public static boolean localFileName(String name) {
+        return LOCAL_FILE.matcher(name).matches() && !name.startsWith(".") && !name.endsWith(".") && !name.endsWith(" ");
+    }
+
+    /**
+     * The page for a video file of the players' own. Only its name is shared: each player's game plays
+     * the file of that name from its own videos folder, if it has one.
+     */
+    public static String localFilePage(String name) {
+        return "http://" + HOST + "/video.html?file=" + URLEncoder.encode(name, StandardCharsets.UTF_8);
+    }
+
+    /** The file name of a {@link #localFilePage}, or null for any other page. */
+    @Nullable
+    public static String localFile(String page) {
+        try {
+            URI uri = new URI(page);
+            Map<String, String> query = query(uri.getRawQuery());
+            String name = query == null || !"/video.html".equals(uri.getRawPath()) ? null : query.get("file");
+            return name != null && localFileName(name) ? name : null;
+        } catch (URISyntaxException e) {
+            return null;
+        }
     }
 
     @Nullable
